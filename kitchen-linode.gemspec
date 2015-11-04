@@ -12,11 +12,12 @@ Gem::Specification.new do |s|
   s.summary     = "Linode Support for Test Kitchen"
   s.description = s.summary
   s.extra_rdoc_files = ['README.md', 'LICENSE']
+  s.license       = 'Apache 2.0'
 
-  s.files         = `git ls-files`.split("\n")
-  s.test_files    = `git ls-files -- {test,spec,features}/*`.split("\n")
-  s.executables   = []
-  s.require_paths = ["lib"]
+  s.files         = `git ls-files`.split($INPUT_RECORD_SEPARATOR)
+  s.executables    = []
+  s.test_files    = s.files.grep(/^(test|spec|features)/)
+  s.require_paths = ['lib']
 
   s.add_runtime_dependency "fog",  "~> 1.0"
   s.add_runtime_dependency "linode", "~> 0.8.1"
