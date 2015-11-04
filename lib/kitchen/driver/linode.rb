@@ -173,7 +173,7 @@ module Kitchen
           disk = @client.linode.disk.createfromdistribution(
             linodeid: state[:server_id],
             distributionid: distribution_id,
-            label: 'TestKitchen Disk Distribution ' + distribution_id.to_s + ' Linode ' + result['linodeid'].to_s,
+            label: 'TestKitchen Disk Distribution ' + distribution_id.to_s + ' Linode ' + state[:server_id].to_s,
             type: 'ext4',
             size: xvda_size,
             rootsshkey: pubkey,
@@ -183,7 +183,7 @@ module Kitchen
           disk = @client.linode.disk.createfromimage(
             linodeid: state[:server_id],
             imageid: image_id,
-            label: 'TestKitchen Disk Image (' + image_id.to_s + ') for ' + result['linodeid'].to_s,
+            label: 'TestKitchen Disk Image (' + image_id.to_s + ') for ' + state[:server_id].to_s,
             size: xvda_size,
             rootsshkey: pubkey,
             rootpass: root_pass
