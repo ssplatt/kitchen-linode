@@ -5,7 +5,7 @@ require "kitchen/driver/linode_version"
 
 Gem::Specification.new do |s|
   s.name        = "kitchen-linode"
-  s.version     = Kitchen::Driver::VERSION
+  s.version     = Kitchen::Driver::LINODE_VERSION
   s.authors     = ['Brett Taylor']
   s.email       = ['btaylor@linode.com']
   s.homepage    = 'https://github.com/ssplatt/kitchen-linode'
@@ -20,7 +20,6 @@ Gem::Specification.new do |s|
   s.require_paths = ['lib']
 
   s.add_runtime_dependency "fog",  "~> 1.0"
-  s.add_runtime_dependency "linode", "~> 0.8.1"
 
   s.add_development_dependency "rspec",   "~> 3.0"
   s.add_development_dependency "rubocop",    "~> 0.24"

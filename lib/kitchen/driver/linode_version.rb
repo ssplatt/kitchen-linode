@@ -15,7 +15,7 @@
 module Kitchen
   module Driver
     # Version string for Linode Kitchen driver
-    VERSION = '0.0.1'
-    MAJOR, MINOR, TINY = VERSION.split('.')
+    LINODE_VERSION = '0.0.1'
+    MAJOR, MINOR, TINY = LINODE_VERSION.split('.')
   end
 end
