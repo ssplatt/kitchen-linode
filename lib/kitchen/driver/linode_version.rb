@@ -1,5 +1,9 @@
 # -*- encoding: utf-8 -*-
 #
+# Author:: Brett Taylor (<btaylor@linode.com>)
+#
+# Copyright (C) 2015, Brett Taylor
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -13,9 +17,9 @@
 # limitations under the License.
 
 module Kitchen
+
   module Driver
     # Version string for Linode Kitchen driver
-    LINODE_VERSION = '0.0.1'
-    MAJOR, MINOR, TINY = LINODE_VERSION.split('.')
+    LINODE_VERSION = "0.1.0.dev"
   end
 end

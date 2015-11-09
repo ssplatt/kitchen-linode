@@ -1,51 +1,21 @@
-# License:: Apache License, Version 2.0
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
+require "bundler/gem_tasks"
+require 'cane/rake_task'
+require 'tailor/rake_task'
 
-require 'bundler'
-Bundler::GemHelper.install_tasks
-
-# require 'rubygems'
-# require 'rake/gempackagetask'
-require 'rake/rdoctask'
-
-begin
-  require 'sdoc'
-
-  Rake::RDocTask.new do |rdoc|
-    rdoc.title = "Linode Ruby API Documentation"
-    rdoc.main = "README.rdoc"
-    rdoc.options << '--fmt' << 'shtml' # explictly set shtml generator
-    rdoc.template = 'direct' # lighter template
-    rdoc.rdoc_files.include("README.rdoc", "LICENSE", "spec/tiny_server.rb", "lib/**/*.rb")
-    rdoc.rdoc_dir = "rdoc"
-  end
-rescue LoadError
-  puts "sdoc is not available. (sudo) gem install sdoc to generate rdoc documentation."
+desc "Run cane to check quality metrics"
+Cane::RakeTask.new do |cane|
+  cane.canefile = './.cane'
 end
 
-begin
-  require 'rspec/core/rake_task'
+Tailor::RakeTask.new
 
-  task :default => :spec
-
-  desc "Run all specs in spec directory"
-  RSpec::Core::RakeTask.new(:spec) do |t|
-    t.pattern = 'spec/unit/**/*_spec.rb'
-  end
-
-rescue LoadError
-  STDERR.puts "\n*** RSpec not available. (sudo) gem install rspec to run unit tests. ***\n\n"
+desc "Display LOC stats"
+task :stats do
+  puts "\n## Production Code Stats"
+  sh "countloc -r lib"
 end
 
+desc "Run all quality tasks"
+task :quality => [:cane, :tailor, :stats]
+
+task :default => [:quality]

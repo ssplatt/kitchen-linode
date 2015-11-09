@@ -1,5 +1,9 @@
 # -*- encoding: utf-8 -*-
 #
+# Author:: Brett Taylor (<btaylor@linode.com>)
+#
+# Copyright (C) 2015, Brett Taylor
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -12,18 +16,20 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-require 'benchmark'
-require 'fog'
 require 'kitchen'
-require 'etc'
-require 'socket'
-require 'json'
+require 'fog'
+require_relative 'linode_version'
 
 module Kitchen
+
   module Driver
     # Linode driver for Kitchen.
-
-    class Linode < Kitchen::Driver::SSHBase
+    #
+    # @author Brett Taylor <btaylor@linode.com>
+    class Linode < Kitchen::Driver::Base
+      kitchen_driver_api_version 2
+      plugin_version Kitchen::Driver::LINODE_VERSION
+      
       default_config :username, 'root'
       default_config :password, nil
       default_config(:image) { |driver| driver.default_image }
@@ -32,29 +38,140 @@ module Kitchen
       default_config :payment_terms, 1
       default_config :ssh_key_name, nil
       default_config :kernel, 215
-
+      
+      default_config :sudo, true
+      default_config :port, 22
+      
+      default_config :private_key, nil
+      default_config :private_key_path, "~/.ssh/id_rsa"
+      default_config :public_key, nil
+      default_config :public_key_path, "~/.ssh/id_rsa.pub"
+      
       default_config :api_key do
         ENV['LINODE_API_KEY']
       end
-
+      
       required_config :api_key
-      
-      default_config :private_key_path do
-        %w(id_rsa id_dsa).map do |k|
-          f = File.expand_path("~/.ssh/#{k}")
-          f if File.exist?(f)
-        end.compact.first
-      end
-      default_config :public_key_path do |driver|
-        driver[:private_key_path] + '.pub' if driver[:private_key_path]
-      end
-      
-      required_config :private_key_path
-      required_config :public_key_path do |_, value, driver|
-        if value.nil? && driver[:key_name].nil?
-          fail(UserError,
-               'Either a `:public_key_path` or `:key_name` is required')
+
+      def create(state)
+        # create and boot server
+        config_server_name
+        
+        if state[:server_id]
+          info "#{config[:server_name]} (#{state[:server_id]}) already exists."
+          return
         end
+        
+        info("Creating Linode.")
+        
+        server = create_server
+        
+        # assign the machine id for reference in other commands
+        state[:server_id] = server.id
+        state[:hostname] = server.public_ip_address
+        info("Linode <#{state[:server_id]}> created.")
+        server.wait_for { ready? }
+        info("Linode <#{state[:server_id]}> ready.")
+      rescue Fog::Errors::Error, Excon::Errors::Error => ex
+        raise ActionFailed, ex.message
+      end
+
+      def destroy(state)
+        return if state[:server_id].nil?
+        server = compute.servers.get(state[:server_id])
+
+        server.destroy
+
+        info("Linode <#{state[:server_id]}> destroyed.")
+        state.delete(:server_id)
+        state.delete(:hostname)
+      end
+      
+      private
+      
+      def compute
+        Fog::Compute.new(:provider => 'Linode', :linode_api_key => config[:api_key])
+      end
+      
+      def create_server
+        if config[:password]
+          root_pass = config[:password]
+        else
+          root_pass = Digest::SHA2.new.update(config[:api_key]).to_s
+        end
+        
+        # set datacenter
+        if config[:data_center].is_a? Integer
+          data_center = compute.data_centers.find { |dc| dc.id == config[:data_center] }
+        else
+          data_center = compute.data_centers.find { |dc| dc.location == config[:data_center] }
+          if data_center.nil?
+            data_center = compute.data_centers.find { |dc| dc.location =~ /#{config[:data_center]}/ }
+          end
+        end
+        if config[:data_center].nil?
+          fail(UserError, 'No match for data_center')
+        end
+        
+        # set flavor
+        if config[:flavor].is_a? Integer
+          flavor = compute.flavors.get(config[:flavor])
+        else
+          flavor = compute.flavors.find { |f| f.ram == config[:flavor] }
+          if flavor.nil?
+            flavor = compute.flavors.find { |f| f.name == config[:flavor] }
+          end
+          if flavor.nil?
+            flavor = compute.flavors.find { |f| f.name =~ /#{config[:flavor]}/ }
+          end
+        end
+        if config[:flavor].nil?
+          fail(UserError, 'No match for flavor')
+        end
+        
+        # set image/distribution
+        if config[:image].is_a? Integer
+          image = compute.images.get(config[:image])
+        else
+          image = compute.images.find { |i| i.name == config[:image] }
+          if image.nil?
+            image = compute.images.find { |i| i.name == /#{config[:image]}/ }
+          end
+        end
+        if config[:image].nil?
+          fail(UserError, 'No match for image')
+        end
+        
+        # set kernel
+        if config[:kernel].is_a? Integer
+          kernel = compute.kernels.get(config[:kernel])
+        else
+          kernel = compute.kernels.find { |k| k.name == config[:kernel] }
+          if kernel.nil?
+            kernel = compute.kernels.find { |k| k.name == /#{config[:kernel]}/ }
+          end
+        end
+        if config[:kernel].nil?
+          fail(UserError, 'No match for kernel')
+        end
+
+        # submit new linode request
+        compute.servers.create(
+          :data_center => data_center,
+          :flavor => flavor, 
+          :payment_terms => config[:payment_terms], 
+          :name => config[:server_name],
+          :image => image,
+          :kernel => kernel,
+          :username => config[:username],
+          :password => root_pass,
+          :public_key_path => config[:public_key_path],
+          :private_key_path => config[:private_key_path]
+        )
+      end
+      
+      def default_name
+        "kitchen_linode-#{rand.to_s.split('.')[1]}"
       end
       
       # Set the proper server name in the config
@@ -69,108 +186,6 @@ module Kitchen
           config[:server_name] = default_name
         end
       end
-      
-      @client = Fog::Compute.new(:provider => 'Linode', :linode_api_key => config[:api_key])
-
-      def create(state)
-        # create and boot server
-        
-        config_server_name
-        
-        if state[:server_id]
-          info "#{config[:server_name]} (#{state[:server_id]}) already exists."
-          return
-        end
-
-        if config[:password]
-          root_pass = config[:password]
-        else
-          root_pass = Digest::SHA2.new.update(config[:api_key]).to_s
-        end
-        
-        # set datacenter
-        data_center = @client.data_centers.get(config[:data_center])
-        if data_center.nil?
-          data_center = @client.data_centers.find { |dc| dc.location == config[:data_center] }
-        end
-        if data_center.nil?
-          data_center = @client.data_centers.find { |dc| dc.location =~ /#{config[:data_center]}/ }
-        end
-        
-        # set flavor
-        flavor = @client.flavors.get(config[:flavor])
-        if flavor.nil?
-          flavor = @client.flavors.find { |f| f.ram == config[:flavor] }
-        end
-        if flavor.nil?
-          flavor = @client.flavors.find { |f| f.name == config[:flavor] }
-        end
-        if flavor.nil?
-          flavor = @client.flavors.find { |f| f.name =~ /#{config[:flavor]}/ }
-        end
-        
-        # set image
-        image = @client.images.get(config[:image])
-        if image.nil?
-          image = @client.images.find { |i| i.name == config[:image] }
-        end
-        if image.nil?
-          image = @client.images.find { |i| i.name == /#{config[:image]}/ }
-        end
-        
-        # set kernel
-        kernel = @client.kernels.get(config[:kernel])
-        
-        if kernel.nil?
-          kernel = @client.kernels.find { |k| k.name == config[:kernel] }
-        end
-        if kernel.nil?
-          kernel = @client.kernels.find { |k| k.name == /#{config[:kernel]}/ }
-        end
-
-        info("Creating Linode.")
-
-        # submit new linode request
-        server = @client.servers.create(
-          :data_center => data_center,
-          :flavor => flavor, 
-          :payment_terms => 1, 
-          :name => config[:server_name],
-          :image => image,
-          :kernel => kernel,
-          :password => root_pass
-        )
-
-        # assign the machine id for reference in other commands
-        state[:server_id] = server.id
-        state[:hostname] = config[:server_name]
-        
-        info("Linode <#{state[:server_id]}> created.")
-
-        linode ||= @client.servers.find { |s| s.id == state[:server_id] }
-
-        wait_for_sshd(state[:hostname]); print "(ssh ready)\n"
-        debug("linode:create #{state[:hostname]}")
-      end
-
-      def destroy(state)
-        return if state[:server_id].nil?
-        server = @client.servers.get(state[:server_id])
-
-        server.destroy
-
-        info("Linode <#{state[:server_id]}> destroyed.")
-        state.delete(:linode_id)
-        state.delete(:hostname)
-      end
-      
-      private
-      
-      def default_name
-        "kitchen_linode-#{rand.to_s.split('.')[1]}"
-      end
     end
   end
 end
-
-# vim: ai et ts=2 sts=2 sw=2 ft=ruby
