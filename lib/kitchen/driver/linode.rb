@@ -70,8 +70,10 @@ module Kitchen
         state[:server_id] = server.id
         state[:hostname] = server.public_ip_address
         info("Linode <#{state[:server_id]}> created.")
+        info("Waiting for linode to boot...")
         server.wait_for { ready? }
         info("Linode <#{state[:server_id]}> ready.")
+        setup_ssh(server, state) if bourne_shell?
       rescue Fog::Errors::Error, Excon::Errors::Error => ex
         raise ActionFailed, ex.message
       end
@@ -94,10 +96,8 @@ module Kitchen
       end
       
       def create_server
-        if config[:password]
-          root_pass = config[:password]
-        else
-          root_pass = Digest::SHA2.new.update(config[:api_key]).to_s
+        if config[:password].nil?
+          config[:password] = Digest::SHA2.new.update(config[:api_key]).to_s
         end
         
         # set datacenter
@@ -154,6 +154,13 @@ module Kitchen
         if config[:kernel].nil?
           fail(UserError, 'No match for kernel')
         end
+        
+        if config[:private_key_path]
+          config[:private_key_path] = File.expand_path(config[:private_key_path])
+        end
+        if config[:public_key_path]
+          config[:public_key_path] = File.expand_path(config[:public_key_path])
+        end
 
         # submit new linode request
         compute.servers.create(
@@ -164,27 +171,34 @@ module Kitchen
           :image => image,
           :kernel => kernel,
           :username => config[:username],
-          :password => root_pass,
-          :public_key_path => config[:public_key_path],
-          :private_key_path => config[:private_key_path]
+          :password => config[:password]
         )
       end
       
-      def default_name
-        "kitchen_linode-#{rand.to_s.split('.')[1]}"
+      def setup_ssh(server, state)
+        info "Using public SSH key <#{config[:public_key_path]}>"
+        info "Using private SSH key <#{config[:private_key_path]}>"
+        state[:ssh_key] = config[:private_key_path]
+        do_ssh_setup(state, config, server)
+      end
+
+      def do_ssh_setup(state, config, server)
+        info "Setting up SSH access for key <#{config[:public_key_path]}>"
+        ssh = Fog::SSH.new(state[:hostname],
+                           config[:username],
+                           password: config[:password])
+        pub_key = open(config[:public_key_path]).read
+        ssh.run([
+          %(mkdir .ssh),
+          %(echo "#{pub_key}" >> ~/.ssh/authorized_keys),
+          %(passwd -l #{config[:username]})
+        ])
       end
       
       # Set the proper server name in the config
       def config_server_name
         return if config[:server_name]
-
-        if config[:server_name_prefix]
-          config[:server_name] = server_name_prefix(
-            config[:server_name_prefix]
-          )
-        else
-          config[:server_name] = default_name
-        end
+        config[:server_name] = "kitchen_linode-#{rand.to_s.split('.')[1]}"
       end
     end
   end
