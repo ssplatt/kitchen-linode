@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # <a name="title"></a> Kitchen::Linode
 
 A Test Kitchen Driver for Linode.
