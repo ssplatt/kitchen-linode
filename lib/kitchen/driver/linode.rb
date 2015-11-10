@@ -115,12 +115,13 @@ module Kitchen
         
         # set flavor
         if config[:flavor].is_a? Integer
-          flavor = compute.flavors.get(config[:flavor])
-        else
-          flavor = compute.flavors.find { |f| f.ram == config[:flavor] }
-          if flavor.nil?
-            flavor = compute.flavors.find { |f| f.name == config[:flavor] }
+          if config[:flavor] < 10
+            flavor = compute.flavors.get(config[:flavor])
+          else
+            flavor = compute.flavors.find { |f| f.ram == config[:flavor] }
           end
+        else
+          flavor = compute.flavors.find { |f| f.name == config[:flavor] }
           if flavor.nil?
             flavor = compute.flavors.find { |f| f.name =~ /#{config[:flavor]}/ }
           end

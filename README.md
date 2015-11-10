@@ -10,11 +10,65 @@ class to enforce these requirements in code, if possible.
 
 ## <a name="installation"></a> Installation and Setup
 
+Install the gem file:
+```
+gem install kitchen-linode
+```
 Please read the [Driver usage][driver_usage] page for more details.
 
 ## <a name="config"></a> Configuration
 
-**TODO:** Write descriptions of all configuration options
+For many of these, you can specify an ID number, a full name, or a partial name that will try to match something in the list but may not match exactly what you want.
+```
+LINODE_API_KEY      Linode API Key environment variable, default: nil
+:username           ssh user name, default: 'root'
+:password           password for user, default: randomly generated hash
+:image              Linux distribution, default: nil
+:data_center        data center, default: 1
+:flavor             linode type/amount of RAM, default: 1
+:payment_terms      if you happen to have legacy default: 1
+:kernel             Linux kernel, default: 215
+:private_key_path   Location of your private key file, default: "~/.ssh/id_rsa"
+:public_key_path    Location of your public key file, default: "~/.ssh/id_rsa.pub"
+```
+
+## <a name="usage"></a> Usage
+
+First, set your Linode API key in an environment variable:
+```
+$ export LINODE_API_KEY='myrandomkey123123213h123bh12'
+```
+Then, create a .kitchen.yml file:
+```
+---
+driver:
+  name: linode
+
+provisioner:
+  name: salt_solo
+  salt_bootstrap_options: -P
+  formula: vim
+  state_top:
+    base:
+      "*":
+        - vim
+
+platforms:
+  - name: debian_jessie
+    driver:
+      flavor: 1024
+      data_center: Dallas
+      kernel: 4.0.2-x86_64-linode56
+      image: Debian 8.1
+
+suites:
+  - name: default
+
+```
+then you're ready to run `kitchen test` or `kitchen converge`
+```
+$ kitchen test
+```
 
 ### <a name="config-require-chef-omnibus"></a> require\_chef\_omnibus
 
