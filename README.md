@@ -56,9 +56,9 @@ Created and maintained by [Brett Taylor][author] (<btaylor@linode.com>)
 Apache 2.0 (see [LICENSE][license])
 
 
-[author]:           https://github.com/enter-github-user
-[issues]:           https://github.com/enter-github-user/kitchen-linode/issues
-[license]:          https://github.com/enter-github-user/kitchen-linode/blob/master/LICENSE
-[repo]:             https://github.com/enter-github-user/kitchen-linode
+[author]:           https://github.com/ssplatt
+[issues]:           https://github.com/ssplatt/kitchen-linode/issues
+[license]:          https://github.com/ssplatt/kitchen-linode/blob/master/LICENSE
+[repo]:             https://github.com/ssplatt/kitchen-linode
 [driver_usage]:     http://docs.kitchen-ci.org/drivers/usage
 [chef_omnibus_dl]:  http://www.getchef.com/chef/install/
