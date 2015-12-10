@@ -41,6 +41,7 @@ module Kitchen
       
       default_config :sudo, true
       default_config :port, 22
+      default_config :ssh_timeout, 60
       
       default_config :private_key, nil
       default_config :private_key_path, "~/.ssh/id_rsa"
@@ -187,7 +188,8 @@ module Kitchen
         info "Setting up SSH access for key <#{config[:public_key_path]}>"
         ssh = Fog::SSH.new(state[:hostname],
                            config[:username],
-                           password: config[:password])
+                           password: config[:password],
+                           timeout: config[:ssh_timeout])
         pub_key = open(config[:public_key_path]).read
         ssh.run([
           %(mkdir .ssh),
