@@ -41,16 +41,14 @@ module Kitchen
       
       default_config :sudo, true
       default_config :port, 22
-      default_config :ssh_timeout, 60
+      default_config :ssh_timeout, 600
       
       default_config :private_key, nil
       default_config :private_key_path, "~/.ssh/id_rsa"
       default_config :public_key, nil
       default_config :public_key_path, "~/.ssh/id_rsa.pub"
       
-      default_config :api_key do
-        ENV['LINODE_API_KEY']
-      end
+      default_config :api_key, ENV['LINODE_API_KEY']
       
       required_config :api_key
 
@@ -73,7 +71,7 @@ module Kitchen
         info("Linode <#{state[:server_id]}> created.")
         info("Waiting for linode to boot...")
         server.wait_for { ready? }
-        info("Linode <#{state[:server_id]}> ready.")
+        info("Linode <#{state[:server_id]}, #{state[:hostname]}> ready.")
         setup_ssh(server, state) if bourne_shell?
       rescue Fog::Errors::Error, Excon::Errors::Error => ex
         raise ActionFailed, ex.message
@@ -98,7 +96,7 @@ module Kitchen
       
       def create_server
         if config[:password].nil?
-          config[:password] = Digest::SHA2.new.update(config[:api_key]).to_s
+          config[:password] = [*('a'..'z'),*('0'..'9')].shuffle[0,20].join
         end
         
         # set datacenter
@@ -186,6 +184,7 @@ module Kitchen
 
       def do_ssh_setup(state, config, server)
         info "Setting up SSH access for key <#{config[:public_key_path]}>"
+        info "Connecting <#{config[:username]}@#{state[:hostname]}>"
         ssh = Fog::SSH.new(state[:hostname],
                            config[:username],
                            password: config[:password],
@@ -196,6 +195,7 @@ module Kitchen
           %(echo "#{pub_key}" >> ~/.ssh/authorized_keys),
           %(passwd -l #{config[:username]})
         ])
+        info "Done setting up SSH access."
       end
       
       # Set the proper server name in the config
