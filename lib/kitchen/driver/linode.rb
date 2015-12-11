@@ -32,12 +32,12 @@ module Kitchen
       
       default_config :username, 'root'
       default_config :password, nil
-      default_config(:image) { |driver| driver.default_image }
-      default_config :data_center, 1
-      default_config :flavor, 1
+      default_config :image, "Debian 8.1"
+      default_config :data_center, "Atlanta"
+      default_config :flavor, "Linode 1024"
       default_config :payment_terms, 1
       default_config :ssh_key_name, nil
-      default_config :kernel, 215
+      default_config :kernel, "Latest 64 bit"
       
       default_config :sudo, true
       default_config :port, 22
@@ -96,7 +96,7 @@ module Kitchen
       
       def create_server
         if config[:password].nil?
-          config[:password] = [*('a'..'z'),*('0'..'9')].shuffle[0,20].join
+          config[:password] = [*('a'..'z'),*('A'..'Z'),*('0'..'9')].shuffle[0,20].join
         end
         
         # set datacenter
@@ -135,7 +135,7 @@ module Kitchen
         else
           image = compute.images.find { |i| i.name == config[:image] }
           if image.nil?
-            image = compute.images.find { |i| i.name == /#{config[:image]}/ }
+            image = compute.images.find { |i| i.name =~ /#{config[:image]}/ }
           end
         end
         if config[:image].nil?
@@ -148,7 +148,7 @@ module Kitchen
         else
           kernel = compute.kernels.find { |k| k.name == config[:kernel] }
           if kernel.nil?
-            kernel = compute.kernels.find { |k| k.name == /#{config[:kernel]}/ }
+            kernel = compute.kernels.find { |k| k.name =~ /#{config[:kernel]}/ }
           end
         end
         if config[:kernel].nil?
@@ -176,25 +176,38 @@ module Kitchen
       end
       
       def setup_ssh(server, state)
-        info "Using public SSH key <#{config[:public_key_path]}>"
-        info "Using private SSH key <#{config[:private_key_path]}>"
         state[:ssh_key] = config[:private_key_path]
-        do_ssh_setup(state, config, server)
+        do_ssh_setup(state, config)
       end
 
-      def do_ssh_setup(state, config, server)
+      def do_ssh_setup(state, config)
         info "Setting up SSH access for key <#{config[:public_key_path]}>"
-        info "Connecting <#{config[:username]}@#{state[:hostname]}>"
+        info "Connecting <#{config[:username]}@#{state[:hostname]}>..."
         ssh = Fog::SSH.new(state[:hostname],
                            config[:username],
-                           password: config[:password],
-                           timeout: config[:ssh_timeout])
+                           :password => config[:password],
+                           :timeout => config[:ssh_timeout])
         pub_key = open(config[:public_key_path]).read
-        ssh.run([
-          %(mkdir .ssh),
-          %(echo "#{pub_key}" >> ~/.ssh/authorized_keys),
-          %(passwd -l #{config[:username]})
-        ])
+        @max_interval = 60
+        @max_retries = 10
+        @retries = 0
+        begin
+          ssh.run([
+            %(mkdir .ssh),
+            %(echo "#{pub_key}" >> ~/.ssh/authorized_keys),
+            %(passwd -l #{config[:username]})
+          ])
+        rescue
+          @retries ||= 0
+          if @retries < @max_retries
+            info "Retrying connection..."
+            sleep [2**(@retries - 1), @max_interval].min
+            @retries += 1
+            retry
+          else
+            raise
+          end
+        end
         info "Done setting up SSH access."
       end
       
