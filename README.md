@@ -23,13 +23,16 @@ For many of these, you can specify an ID number, a full name, or a partial name 
 LINODE_API_KEY      Linode API Key environment variable, default: nil
 :username           ssh user name, default: 'root'
 :password           password for user, default: randomly generated hash
-:image              Linux distribution, default: nil
-:data_center        data center, default: 1
-:flavor             linode type/amount of RAM, default: 1
+:image              Linux distribution, default: "Debian 8.1"
+:data_center        data center, default: "Atlanta"
+:flavor             linode type/amount of RAM, default: "Linode 1024"
 :payment_terms      if you happen to have legacy default: 1
-:kernel             Linux kernel, default: 215
+:kernel             Linux kernel, default: "Latest 64 bit"
 :private_key_path   Location of your private key file, default: "~/.ssh/id_rsa"
 :public_key_path    Location of your public key file, default: "~/.ssh/id_rsa.pub"
+:ssh_timeout        ssh timeout, default: 600 (seconds)
+:sudo               use sudo, default: True
+:port               ssh port, default: 22
 ```
 
 ## <a name="usage"></a> Usage
@@ -46,7 +49,6 @@ driver:
 
 provisioner:
   name: salt_solo
-  salt_bootstrap_options: -P
   formula: vim
   state_top:
     base:
@@ -55,19 +57,49 @@ provisioner:
 
 platforms:
   - name: debian_jessie
-    driver:
-      flavor: 1024
-      data_center: Dallas
-      kernel: 4.0.2-x86_64-linode56
-      image: Debian 8.1
 
 suites:
   - name: default
-
 ```
 then you're ready to run `kitchen test` or `kitchen converge`
 ```
 $ kitchen test
+```
+If you want to create a second yaml config; one for using Vagrant locally but a second to use the Linode driver when run on your CI server, create a config with a name like `.kitchen-ci.yml`:
+```
+---
+driver:
+  name: linode
+
+provisioner:
+  name: salt_solo
+  formula: vim
+  state_top:
+    base:
+      "*":
+        - vim
+
+platforms:
+  - name: debian_jessie
+
+suites:
+  - name: default
+```
+Then you can run the second config by changing the KITCHEN_YAML environment variable:
+```
+$ KITCHEN_YAML="./.kitchen-ci.yml" kitchen test
+```
+If you want to change any of the default settings, you can do it in the 'platforms' area:
+```
+...
+platforms:
+  - name: debian_jessie
+    driver:
+      flavor: 2048
+      data_center: Dallas
+      kernel: 4.0.2-x86_64-linode56
+      image: Debian 7
+...
 ```
 
 ### <a name="config-require-chef-omnibus"></a> require\_chef\_omnibus
