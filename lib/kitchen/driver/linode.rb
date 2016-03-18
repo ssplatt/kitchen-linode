@@ -108,8 +108,8 @@ module Kitchen
             data_center = compute.data_centers.find { |dc| dc.location =~ /#{config[:data_center]}/ }
           end
         end
-        if config[:data_center].nil?
-          fail(UserError, 'No match for data_center')
+        if data_center.nil?
+          fail(UserError, "No match for data_center: #{config[:data_center]}")
         end
         
         # set flavor
@@ -125,8 +125,8 @@ module Kitchen
             flavor = compute.flavors.find { |f| f.name =~ /#{config[:flavor]}/ }
           end
         end
-        if config[:flavor].nil?
-          fail(UserError, 'No match for flavor')
+        if flavor.nil?
+          fail(UserError, "No match for flavor: #{config[:flavor]}")
         end
         
         # set image/distribution
@@ -138,8 +138,8 @@ module Kitchen
             image = compute.images.find { |i| i.name =~ /#{config[:image]}/ }
           end
         end
-        if config[:image].nil?
-          fail(UserError, 'No match for image')
+        if image.nil?
+          fail(UserError, "No match for image: #{config[:image]}")
         end
         
         # set kernel
@@ -151,8 +151,8 @@ module Kitchen
             kernel = compute.kernels.find { |k| k.name =~ /#{config[:kernel]}/ }
           end
         end
-        if config[:kernel].nil?
-          fail(UserError, 'No match for kernel')
+        if kernel.nil?
+          fail(UserError, "No match for kernel: #{config[:kernel]}")
         end
         
         if config[:private_key_path]

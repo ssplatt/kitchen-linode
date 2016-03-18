@@ -1,3 +1,7 @@
+## 0.8.0
+
+* updated some error handling logic
+
 ## 0.7.0
 
 * changed default Distribution to 'Debian 8' to match change upstream
