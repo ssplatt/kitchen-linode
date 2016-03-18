@@ -1,3 +1,7 @@
+## 0.7.0
+
+* changed default Distribution to 'Debian 8' to match change upstream
+
 ## 0.6.0
 
 * added an info line

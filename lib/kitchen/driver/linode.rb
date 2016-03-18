@@ -32,12 +32,12 @@ module Kitchen
       
       default_config :username, 'root'
       default_config :password, nil
-      default_config :image, "Debian 8.1"
-      default_config :data_center, "Atlanta"
-      default_config :flavor, "Linode 1024"
+      default_config :image, 140
+      default_config :data_center, 4
+      default_config :flavor, 1
       default_config :payment_terms, 1
       default_config :ssh_key_name, nil
-      default_config :kernel, "Latest 64 bit"
+      default_config :kernel, 138
       
       default_config :sudo, true
       default_config :port, 22
