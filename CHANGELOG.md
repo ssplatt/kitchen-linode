@@ -1,3 +1,7 @@
+## 0.9.0
+
+* added some extra info lines
+
 ## 0.8.0
 
 * updated some error handling logic

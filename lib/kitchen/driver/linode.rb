@@ -111,6 +111,7 @@ module Kitchen
         if data_center.nil?
           fail(UserError, "No match for data_center: #{config[:data_center]}")
         end
+        info "Got data center: #{data_center.location}..."
         
         # set flavor
         if config[:flavor].is_a? Integer
@@ -128,6 +129,7 @@ module Kitchen
         if flavor.nil?
           fail(UserError, "No match for flavor: #{config[:flavor]}")
         end
+        info "Got flavor: #{flavor.name}..."
         
         # set image/distribution
         if config[:image].is_a? Integer
@@ -141,6 +143,7 @@ module Kitchen
         if image.nil?
           fail(UserError, "No match for image: #{config[:image]}")
         end
+        info "Got image: #{image.name}..."
         
         # set kernel
         if config[:kernel].is_a? Integer
@@ -154,6 +157,7 @@ module Kitchen
         if kernel.nil?
           fail(UserError, "No match for kernel: #{config[:kernel]}")
         end
+        info "Got kernel: #{kernel.name}..."
         
         if config[:private_key_path]
           config[:private_key_path] = File.expand_path(config[:private_key_path])
