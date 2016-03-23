@@ -1,4 +1,6 @@
 source "http://rubygems.org"
 
-# Specify your gem's dependencies in knife-linode.gemspec
 gemspec
+
+gem 'rspec', '~> 3.0'
+

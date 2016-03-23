@@ -115,8 +115,8 @@ module Kitchen
         
         # set flavor
         if config[:flavor].is_a? Integer
-          if config[:flavor] < 10
-            flavor = compute.flavors.get(config[:flavor])
+          if config[:flavor] < 1024
+            flavor = compute.flavors.find { |f| f.id == config[:flavor] }
           else
             flavor = compute.flavors.find { |f| f.ram == config[:flavor] }
           end
@@ -133,7 +133,7 @@ module Kitchen
         
         # set image/distribution
         if config[:image].is_a? Integer
-          image = compute.images.get(config[:image])
+          image = compute.images.find { |i| i.id == config[:image] }
         else
           image = compute.images.find { |i| i.name == config[:image] }
           if image.nil?
@@ -147,7 +147,7 @@ module Kitchen
         
         # set kernel
         if config[:kernel].is_a? Integer
-          kernel = compute.kernels.get(config[:kernel])
+          kernel = compute.kernels.find { |k| k.id == config[:kernel] }
         else
           kernel = compute.kernels.find { |k| k.name == config[:kernel] }
           if kernel.nil?
