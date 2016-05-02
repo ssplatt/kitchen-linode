@@ -2,6 +2,8 @@
 
 A Test Kitchen Driver for Linode.
 
+[![asciicast](https://asciinema.org/a/44348.png)](https://asciinema.org/a/44348)
+
 ## <a name="requirements"></a> Requirements
 
 Requires [Test Kitchen](http://kitchen-ci.org) and a Linode account.
