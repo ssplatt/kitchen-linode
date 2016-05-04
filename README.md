@@ -3,13 +3,13 @@
 [![Gem](https://img.shields.io/gem/dt/kitchen-linode.svg)](https://rubygems.org/gems/kitchen-linode)
 [![Gem](https://img.shields.io/gem/dtv/kitchen-linode.svg)](https://rubygems.org/gems/kitchen-linode)
 
-A Test Kitchen Driver for Linode.
+A Test Kitchen Driver for [Linode](http://www.linode.com).
 
 [![asciicast](https://asciinema.org/a/44348.png)](https://asciinema.org/a/44348)
 
 ## <a name="requirements"></a> Requirements
 
-Requires [Test Kitchen](http://kitchen-ci.org) and a Linode account.
+Requires [Test Kitchen](http://kitchen-ci.org) and a [Linode](http://www.linode.com) account.
 ```
 gem install test-kitchen
 ```
