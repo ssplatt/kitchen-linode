@@ -11,10 +11,11 @@ gem install test-kitchen
 
 ## <a name="installation"></a> Installation and Setup
 
-Install the gem file:
+The gem file is hosted at [RubyGems](https://rubygems.org/gems/kitchen-linode). To install the gem file, run:
 ```
 gem install kitchen-linode
 ```
+Or, install with bundler if you have a Gemfile
 Please read the [Driver usage][driver_usage] page for more details.
 
 ## <a name="config"></a> Configuration
@@ -66,7 +67,7 @@ then you're ready to run `kitchen test` or `kitchen converge`
 ```
 $ kitchen test
 ```
-If you want to create a second yaml config; one for using Vagrant locally but a second to use the Linode driver when run on your CI server, create a config with a name like `.kitchen-ci.yml`:
+If you want to create a second yaml config; one for using Vagrant locally but another to use the Linode driver when run on your CI server, create a config with a name like `.kitchen-ci.yml`:
 ```
 ---
 driver:

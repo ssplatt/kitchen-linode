@@ -2,5 +2,7 @@ source "http://rubygems.org"
 
 gemspec
 
-gem 'rspec', '~> 3.0'
-
+group :test do
+  gem 'rspec', '~> 3.0'
+  gem 'rake'
+end
