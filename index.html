@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <link href='https://fonts.googleapis.com/css?family=Chivo:900' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/github-dark.css" media="screen">
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <title>Kitchen-linode by ssplatt</title>
+  </head>
+
+  <body>
+    <div id="container">
+      <div class="inner">
+
+        <header>
+          <h1>Kitchen-linode</h1>
+          <h2>a Linode driver for Test Kitchen</h2>
+        </header>
+
+        <section id="downloads" class="clearfix">
+          <a href="https://github.com/ssplatt/kitchen-linode/zipball/master" id="download-zip" class="button"><span>Download .zip</span></a>
+          <a href="https://github.com/ssplatt/kitchen-linode/tarball/master" id="download-tar-gz" class="button"><span>Download .tar.gz</span></a>
+          <a href="https://github.com/ssplatt/kitchen-linode" id="view-on-github" class="button"><span>View on GitHub</span></a>
+        </section>
+
+        <hr>
+
+        <section id="main_content">
+          <h1>
+<a id="-kitchenlinode" class="anchor" href="#-kitchenlinode" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a><a name="title"></a> Kitchen::Linode</h1>
+
+<p><a href="https://rubygems.org/gems/kitchen-linode"><img src="https://img.shields.io/gem/v/kitchen-linode.svg" alt="Gem"></a>
+<a href="https://rubygems.org/gems/kitchen-linode"><img src="https://img.shields.io/gem/dt/kitchen-linode.svg" alt="Gem"></a>
+<a href="https://rubygems.org/gems/kitchen-linode"><img src="https://img.shields.io/gem/dtv/kitchen-linode.svg" alt="Gem"></a></p>
+
+<p>A Test Kitchen Driver for <a href="http://www.linode.com">Linode</a>.</p>
+
+<p><a href="https://asciinema.org/a/44348"><img src="https://asciinema.org/a/44348.png" alt="asciicast"></a></p>
+
+<h2>
+<a id="-requirements" class="anchor" href="#-requirements" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a><a name="requirements"></a> Requirements</h2>
+
+<p>Requires <a href="http://kitchen-ci.org">Test Kitchen</a> and a <a href="http://www.linode.com">Linode</a> account.</p>
+
+<pre><code>gem install test-kitchen
+</code></pre>
+
+<h2>
+<a id="-installation-and-setup" class="anchor" href="#-installation-and-setup" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a><a name="installation"></a> Installation and Setup</h2>
+
+<p>Install the gem file:</p>
+
+<pre><code>gem install kitchen-linode
+</code></pre>
+
+<p>Please read the <a href="http://docs.kitchen-ci.org/drivers/usage">Driver usage</a> page for more details.</p>
+
+<h2>
+<a id="-configuration" class="anchor" href="#-configuration" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a><a name="config"></a> Configuration</h2>
+
+<p>For many of these, you can specify an ID number, a full name, or a partial name that will try to match something in the list but may not match exactly what you want.</p>
+
+<pre><code>LINODE_API_KEY      Linode API Key environment variable, default: nil
+:username           ssh user name, default: "root"
+:password           password for user, default: randomly generated hash
+:image              Linux distribution, default: "Debian 8"
+:data_center        data center, default: "Atlanta"
+:flavor             linode type/amount of RAM, default: "Linode 1024"
+:payment_terms      if you happen to have legacy, default: 1
+:kernel             Linux kernel, default: "Latest 64 bit"
+:private_key_path   Location of your private key file, default: "~/.ssh/id_rsa"
+:public_key_path    Location of your public key file, default: "~/.ssh/id_rsa.pub"
+:ssh_timeout        ssh timeout, default: 600 (seconds)
+:sudo               use sudo, default: True
+:port               ssh port, default: 22
+</code></pre>
+
+<h2>
+<a id="-usage" class="anchor" href="#-usage" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a><a name="usage"></a> Usage</h2>
+
+<p>First, set your Linode API key in an environment variable:</p>
+
+<pre><code>$ export LINODE_API_KEY='myrandomkey123123213h123bh12'
+</code></pre>
+
+<p>Then, create a .kitchen.yml file:</p>
+
+<pre><code>---
+driver:
+  name: linode
+
+provisioner:
+  name: salt_solo
+  formula: vim
+  state_top:
+    base:
+      "*":
+        - vim
+
+platforms:
+  - name: debian_jessie
+
+suites:
+  - name: default
+</code></pre>
+
+<p>then you're ready to run <code>kitchen test</code> or <code>kitchen converge</code></p>
+
+<pre><code>$ kitchen test
+</code></pre>
+
+<p>If you want to create a second yaml config; one for using Vagrant locally but a second to use the Linode driver when run on your CI server, create a config with a name like <code>.kitchen-ci.yml</code>:</p>
+
+<pre><code>---
+driver:
+  name: linode
+
+provisioner:
+  name: salt_solo
+  formula: vim
+  state_top:
+    base:
+      "*":
+        - vim
+
+platforms:
+  - name: debian_jessie
+
+suites:
+  - name: default
+</code></pre>
+
+<p>Then you can run the second config by changing the KITCHEN_YAML environment variable:</p>
+
+<pre><code>$ KITCHEN_YAML="./.kitchen-ci.yml" kitchen test
+</code></pre>
+
+<p>If you want to change any of the default settings, you can do so in the 'platforms' area:</p>
+
+<pre><code>...&lt;snip&gt;...
+platforms:
+  - name: debian_jessie
+    driver:
+      flavor: 2048
+      data_center: Dallas
+      kernel: 4.0.2-x86_64-linode56
+      image: Debian 7
+...&lt;snip&gt;...
+</code></pre>
+
+<h2>
+<a id="-development" class="anchor" href="#-development" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a><a name="development"></a> Development</h2>
+
+<ul>
+<li>Source hosted at <a href="https://github.com/ssplatt/kitchen-linode">GitHub</a>
+</li>
+<li>Report issues/questions/feature requests on <a href="https://github.com/ssplatt/kitchen-linode/issues">GitHub Issues</a>
+</li>
+</ul>
+
+<p>Pull requests are very welcome! Make sure your patches are well tested.
+Ideally create a topic branch for every separate change you make. For
+example:</p>
+
+<ol>
+<li>Fork the repo</li>
+<li>Create your feature branch (<code>git checkout -b my-new-feature</code>)</li>
+<li>Commit your changes (<code>git commit -am 'Added some feature'</code>)</li>
+<li>Push to the branch (<code>git push origin my-new-feature</code>)</li>
+<li>Create new Pull Request</li>
+</ol>
+
+<h2>
+<a id="-authors" class="anchor" href="#-authors" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a><a name="authors"></a> Authors</h2>
+
+<p>Created and maintained by <a href="https://github.com/ssplatt">Brett Taylor</a> (<a href="mailto:btaylor@linode.com">btaylor@linode.com</a>)</p>
+
+<h2>
+<a id="-license" class="anchor" href="#-license" aria-hidden="true"><span aria-hidden="true" class="octicon octicon-link"></span></a><a name="license"></a> License</h2>
+
+<p>Apache 2.0 (see <a href="https://github.com/ssplatt/kitchen-linode/blob/master/LICENSE">LICENSE</a>)</p>
+        </section>
+
+        <footer>
+          Kitchen-linode is maintained by <a href="https://github.com/ssplatt">ssplatt</a><br>
+          This page was generated by <a href="https://pages.github.com">GitHub Pages</a>. Tactile theme by <a href="https://twitter.com/jasonlong">Jason Long</a>.
+        </footer>
+
+        
+      </div>
+    </div>
+  </body>
+</html>
