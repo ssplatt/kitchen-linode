@@ -48,7 +48,9 @@ describe Kitchen::Driver::Linode do
 
     context 'both private and public key info provided' do
       let(:config) do
-        { private_key_path: '/tmp/key', public_key_path: '/tmp/key.pub' }
+        { private_key_path: '/tmp/key', 
+          public_key_path: '/tmp/key.pub',
+          api_key: 'mykey' }
       end
 
       it 'raises no error' do
