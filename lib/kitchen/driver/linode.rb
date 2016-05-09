@@ -97,16 +97,16 @@ module Kitchen
       
       def get_dc
         if config[:data_center].is_a? Integer
-          dc = compute.data_centers.find { |dc| dc.id == config[:data_center] }
+          data_center = compute.data_centers.find { |dc| dc.id == config[:data_center] }
         else
-          dc = compute.data_centers.find { |dc| dc.location =~ /#{config[:data_center]}/ }
+          data_center = compute.data_centers.find { |dc| dc.location =~ /#{config[:data_center]}/ }
         end
         
-        if dc.nil?
+        if data_center.nil?
           fail(UserError, "No match for data_center: #{config[:data_center]}")
         end
-        info "Got data center: #{dc.location}..."
-        return dc
+        info "Got data center: #{data_center.location}..."
+        return data_center
       end
       
       def get_flavor
