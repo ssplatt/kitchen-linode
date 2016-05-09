@@ -46,7 +46,7 @@ describe Kitchen::Driver::Linode do
   describe '#finalize_config' do
     before(:each) { allow(File).to receive(:exist?).and_return(false) }
 
-    context 'both private and public key info provided' do
+    context 'private key, public key, and api key provided' do
       let(:config) do
         { private_key_path: '/tmp/key', 
           public_key_path: '/tmp/key.pub',
