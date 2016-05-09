@@ -6,10 +6,10 @@ engines:
       - ruby
       - javascript
       exclude_fingerprints:
-        - f08c6dde8c0c74e57c63addbf89c6620
+      - f08c6dde8c0c74e57c63addbf89c6620
   rubocop:
       enabled: true
-      
+
 ratings:
    paths:
    - "app/**/*"
