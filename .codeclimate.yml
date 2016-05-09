@@ -5,6 +5,9 @@ engines:
       languages:
       - ruby
       - javascript
+  rubocop:
+      enabled: true
+      
 ratings:
    paths:
    - "app/**/*"
