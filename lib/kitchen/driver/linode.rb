@@ -72,7 +72,7 @@ module Kitchen
         info("Waiting for linode to boot...")
         server.wait_for { ready? }
         info("Linode <#{state[:server_id]}, #{state[:hostname]}> ready.")
-        setup_ssh(server, state) if bourne_shell?
+        setup_ssh(state) if bourne_shell?
       rescue Fog::Errors::Error, Excon::Errors::Error => ex
         raise ActionFailed, ex.message
       end
@@ -96,7 +96,7 @@ module Kitchen
       
       def create_server
         if config[:password].nil?
-          config[:password] = [*('a'..'z'),*('A'..'Z'),*('0'..'9')].shuffle[0,20].join
+          config[:password] = [*('a'..'z'),*('A'..'Z'),*('0'..'9')].sample(12).join
         end
         
         # set datacenter
@@ -179,7 +179,7 @@ module Kitchen
         )
       end
       
-      def setup_ssh(server, state)
+      def setup_ssh(state)
         state[:ssh_key] = config[:private_key_path]
         do_ssh_setup(state, config)
       end
