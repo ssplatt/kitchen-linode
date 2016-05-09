@@ -32,25 +32,31 @@ module Kitchen
       
       default_config :username, 'root'
       default_config :password, nil
+      default_config :server_name, nil
       default_config :image, 140
       default_config :data_center, 4
       default_config :flavor, 1
       default_config :payment_terms, 1
-      default_config :ssh_key_name, nil
       default_config :kernel, 138
       
       default_config :sudo, true
-      default_config :port, 22
       default_config :ssh_timeout, 600
       
-      default_config :private_key, nil
-      default_config :private_key_path, "~/.ssh/id_rsa"
-      default_config :public_key, nil
-      default_config :public_key_path, "~/.ssh/id_rsa.pub"
+      default_config :private_key_path do
+        %w(id_rsa).map do |k|
+          f = File.expand_path("~/.ssh/#{k}")
+          f if File.exist?(f)
+        end.compact.first
+      end
+      default_config :public_key_path do |driver|
+        driver[:private_key_path] + '.pub' if driver[:private_key_path]
+      end
       
       default_config :api_key, ENV['LINODE_API_KEY']
       
       required_config :api_key
+      required_config :private_key_path
+      required_config :public_key_path
 
       def create(state)
         # create and boot server
