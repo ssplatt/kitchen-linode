@@ -55,6 +55,7 @@ module Kitchen
       def create(state)
         # create and boot server
         config_server_name
+        set_password
         
         if state[:server_id]
           info "#{config[:server_name]} (#{state[:server_id]}) already exists."
@@ -94,26 +95,21 @@ module Kitchen
         Fog::Compute.new(:provider => 'Linode', :linode_api_key => config[:api_key])
       end
       
-      def create_server
-        if config[:password].nil?
-          config[:password] = [*('a'..'z'),*('A'..'Z'),*('0'..'9')].sample(12).join
+      def get_dc
+        if config[:data_center].is_a? Integer
+          dc = compute.data_centers.find { |dc| dc.id == config[:data_center] }
+        else
+          dc = compute.data_centers.find { |dc| dc.location =~ /#{config[:data_center]}/ }
         end
         
-        # set datacenter
-        if config[:data_center].is_a? Integer
-          data_center = compute.data_centers.find { |dc| dc.id == config[:data_center] }
-        else
-          data_center = compute.data_centers.find { |dc| dc.location == config[:data_center] }
-          if data_center.nil?
-            data_center = compute.data_centers.find { |dc| dc.location =~ /#{config[:data_center]}/ }
-          end
-        end
-        if data_center.nil?
+        if dc.nil?
           fail(UserError, "No match for data_center: #{config[:data_center]}")
         end
-        info "Got data center: #{data_center.location}..."
-        
-        # set flavor
+        info "Got data center: #{dc.location}..."
+        return dc
+      end
+      
+      def get_flavor
         if config[:flavor].is_a? Integer
           if config[:flavor] < 1024
             flavor = compute.flavors.find { |f| f.id == config[:flavor] }
@@ -121,51 +117,48 @@ module Kitchen
             flavor = compute.flavors.find { |f| f.ram == config[:flavor] }
           end
         else
-          flavor = compute.flavors.find { |f| f.name == config[:flavor] }
-          if flavor.nil?
-            flavor = compute.flavors.find { |f| f.name =~ /#{config[:flavor]}/ }
-          end
+          flavor = compute.flavors.find { |f| f.name =~ /#{config[:flavor]}/ }
         end
+        
         if flavor.nil?
           fail(UserError, "No match for flavor: #{config[:flavor]}")
         end
         info "Got flavor: #{flavor.name}..."
-        
-        # set image/distribution
+        return flavor
+      end
+      
+      def get_image
         if config[:image].is_a? Integer
           image = compute.images.find { |i| i.id == config[:image] }
         else
-          image = compute.images.find { |i| i.name == config[:image] }
-          if image.nil?
-            image = compute.images.find { |i| i.name =~ /#{config[:image]}/ }
-          end
+          image = compute.images.find { |i| i.name =~ /#{config[:image]}/ }
         end
         if image.nil?
           fail(UserError, "No match for image: #{config[:image]}")
         end
         info "Got image: #{image.name}..."
-        
-        # set kernel
+        return image
+      end
+      
+      def get_kernel
         if config[:kernel].is_a? Integer
           kernel = compute.kernels.find { |k| k.id == config[:kernel] }
         else
-          kernel = compute.kernels.find { |k| k.name == config[:kernel] }
-          if kernel.nil?
-            kernel = compute.kernels.find { |k| k.name =~ /#{config[:kernel]}/ }
-          end
+          kernel = compute.kernels.find { |k| k.name =~ /#{config[:kernel]}/ }
         end
         if kernel.nil?
           fail(UserError, "No match for kernel: #{config[:kernel]}")
         end
         info "Got kernel: #{kernel.name}..."
+        return kernel
+      end
+      
+      def create_server
+        data_center = get_dc
+        flavor = get_flavor
+        image = get_image
+        kernel = get_kernel
         
-        if config[:private_key_path]
-          config[:private_key_path] = File.expand_path(config[:private_key_path])
-        end
-        if config[:public_key_path]
-          config[:public_key_path] = File.expand_path(config[:public_key_path])
-        end
-
         # submit new linode request
         compute.servers.create(
           :data_center => data_center,
@@ -180,6 +173,7 @@ module Kitchen
       end
       
       def setup_ssh(state)
+        set_ssh_keys
         state[:ssh_key] = config[:private_key_path]
         do_ssh_setup(state, config)
       end
@@ -219,6 +213,23 @@ module Kitchen
       def config_server_name
         return if config[:server_name]
         config[:server_name] = "kitchen_linode-#{rand.to_s.split('.')[1]}"
+      end
+      
+      # ensure a password is set
+      def set_password
+        if config[:password].nil?
+          config[:password] = [*('a'..'z'),*('A'..'Z'),*('0'..'9')].sample(15).join
+        end
+      end
+      
+      # set ssh keys
+      def set_ssh_keys
+        if config[:private_key_path]
+          config[:private_key_path] = File.expand_path(config[:private_key_path])
+        end
+        if config[:public_key_path]
+          config[:public_key_path] = File.expand_path(config[:public_key_path])
+        end
       end
     end
   end
