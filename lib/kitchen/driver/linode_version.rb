@@ -20,6 +20,6 @@ module Kitchen
 
   module Driver
     # Version string for Linode Kitchen driver
-    LINODE_VERSION = "0.11.0"
+    LINODE_VERSION = "0.12.0"
   end
 end
