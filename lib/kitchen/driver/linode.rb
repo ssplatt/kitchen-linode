@@ -63,36 +63,36 @@ module Kitchen
         config_server_name
         set_password
         
-        if state[:server_id]
-          info "#{config[:server_name]} (#{state[:server_id]}) already exists."
+        if state[:linode_id]
+          info "#{config[:server_name]} (#{state[:linode_id]}) already exists."
           return
         end
         
-        info("Creating Linode.")
+        info("Creating Linode - #{config[:server_name]}")
         
         server = create_server
         
         # assign the machine id for reference in other commands
-        state[:server_id] = server.id
+        state[:linode_id] = server.id
         state[:hostname] = server.public_ip_address
-        info("Linode <#{state[:server_id]}> created.")
+        info("Linode <#{state[:linode_id]}> created.")
         info("Waiting for linode to boot...")
         server.wait_for { ready? }
-        info("Linode <#{state[:server_id]}, #{state[:hostname]}> ready.")
+        info("Linode <#{state[:linode_id]}, #{state[:hostname]}> ready.")
         setup_ssh(state) if bourne_shell?
       rescue Fog::Errors::Error, Excon::Errors::Error => ex
         raise ActionFailed, ex.message
       end
 
       def destroy(state)
-        return if state[:server_id].nil?
-        server = compute.servers.get(state[:server_id])
+        return if state[:linode_id].nil?
+        server = compute.servers.get(state[:linode_id])
 
         server.destroy
 
-        info("Linode <#{state[:server_id]}> destroyed.")
-        state.delete(:server_id)
-        state.delete(:hostname)
+        info("Linode <#{state[:linode_id]}> destroyed.")
+        state.delete(:linode_id)
+        state.delete(:pub_ip)
       end
       
       private
@@ -192,11 +192,15 @@ module Kitchen
                            :password => config[:password],
                            :timeout => config[:ssh_timeout])
         pub_key = open(config[:public_key_path]).read
+        shortname = "#{config[:vm_hostname].split('.')[0]}"
+        hostsfile = "127.0.0.1 #{config[:vm_hostname]} #{shortname} localhost\n::1 #{config[:vm_hostname]} #{shortname} localhost"
         @max_interval = 60
         @max_retries = 10
         @retries = 0
         begin
           ssh.run([
+            %(echo "#{hostsfile}" > /etc/hosts),
+            %(hostnamectl set-hostname #{config[:vm_hostname]}),
             %(mkdir .ssh),
             %(echo "#{pub_key}" >> ~/.ssh/authorized_keys),
             %(passwd -l #{config[:username]})
@@ -217,8 +221,17 @@ module Kitchen
       
       # Set the proper server name in the config
       def config_server_name
-        return if config[:server_name]
-        config[:server_name] = "kitchen_linode-#{rand.to_s.split('.')[1]}"
+        if config[:server_name]
+          config[:vm_hostname] = "#{config[:server_name]}"
+          config[:server_name] = "kitchen-#{config[:server_name]}-#{instance.name}-#{Time.now.to_i.to_s}"
+        else
+          config[:vm_hostname] = "#{instance.name}"
+          config[:server_name] = "kitchen-#{File.basename(config[:kitchen_root])}-#{instance.name}-#{Time.now.to_i.to_s}"
+        end
+        
+        if config[:server_name].is_a?(String) && config[:server_name].size >= 32
+          config[:server_name] = "#{config[:server_name][0..29]}#{rand(10..99)}"
+        end
       end
       
       # ensure a password is set
