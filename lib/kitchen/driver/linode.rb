@@ -226,9 +226,16 @@ module Kitchen
           config[:server_name] = "kitchen-#{config[:server_name]}-#{instance.name}-#{Time.now.to_i.to_s}"
         else
           config[:vm_hostname] = "#{instance.name}"
-          config[:server_name] = "kitchen-#{File.basename(config[:kitchen_root])}-#{instance.name}-#{Time.now.to_i.to_s}"
+          if ENV["JOB_NAME"]
+            # use jenkins job name variable. "kitchen_root" turns into "workspace" which is uninformative.
+            jobname = ENV["JOB_NAME"].tr(" ", "_")
+          else
+            jobname = File.basename(config[:kitchen_root])
+          end
+          config[:server_name] = "kitchen-#{jobname}-#{instance.name}-#{Time.now.to_i.to_s}"
         end
         
+        # cut to fit Linode 32 character maximum
         if config[:server_name].is_a?(String) && config[:server_name].size >= 32
           config[:server_name] = "#{config[:server_name][0..29]}#{rand(10..99)}"
         end
