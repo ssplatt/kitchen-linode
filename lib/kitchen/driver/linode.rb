@@ -228,13 +228,13 @@ module Kitchen
           config[:vm_hostname] = "#{instance.name}"
           if ENV["JOB_NAME"]
             # use jenkins job name variable. "kitchen_root" turns into "workspace" which is uninformative.
-            jobname = ENV["JOB_NAME"].tr(" ", "_")
+            jobname = ENV["JOB_NAME"]
           elsif ENV["TRAVIS_REPO_SLUG"]
-            jobname = ENV["TRAVIS_REPO_SLUG"].tr("/", "_")
+            jobname = ENV["TRAVIS_REPO_SLUG"]
           else
             jobname = File.basename(config[:kitchen_root])
           end
-          config[:server_name] = "kitchen-#{jobname}-#{instance.name}-#{Time.now.to_i.to_s}"
+          config[:server_name] = "kitchen-#{jobname}-#{instance.name}-#{Time.now.to_i.to_s}".tr(" /", "_")
         end
         
         # cut to fit Linode 32 character maximum
