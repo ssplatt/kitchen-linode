@@ -2,9 +2,7 @@
 [![Gem](https://img.shields.io/gem/v/kitchen-linode.svg)](https://rubygems.org/gems/kitchen-linode)
 [![Gem](https://img.shields.io/gem/dt/kitchen-linode.svg)](https://rubygems.org/gems/kitchen-linode)
 [![Gem](https://img.shields.io/gem/dtv/kitchen-linode.svg)](https://rubygems.org/gems/kitchen-linode)
-[![Code Climate](https://codeclimate.com/github/ssplatt/kitchen-linode/badges/gpa.svg)](https://codeclimate.com/github/ssplatt/kitchen-linode)
-[![Test Coverage](https://codeclimate.com/github/ssplatt/kitchen-linode/badges/coverage.svg)](https://codeclimate.com/github/ssplatt/kitchen-linode/coverage)
-[![Build Status](https://travis-ci.org/ssplatt/kitchen-linode.svg?branch=master)](https://travis-ci.org/ssplatt/kitchen-linode)
+[![CI](https://github.com/ssplatt/kitchen-linode/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/ssplatt/kitchen-linode/actions/workflows/ci.yml)
 
 A Test Kitchen Driver for [Linode](http://www.linode.com).
 

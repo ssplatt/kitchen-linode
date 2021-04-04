@@ -229,8 +229,8 @@ module Kitchen
           if ENV["JOB_NAME"]
             # use jenkins job name variable. "kitchen_root" turns into "workspace" which is uninformative.
             jobname = ENV["JOB_NAME"]
-          elsif ENV["TRAVIS_REPO_SLUG"]
-            jobname = ENV["TRAVIS_REPO_SLUG"]
+          elsif ENV["GITHUB_JOB"]
+            jobname = ENV["GITHUB_JOB"]
           elsif config[:kitchen_root]
             jobname = File.basename(config[:kitchen_root])
           else
