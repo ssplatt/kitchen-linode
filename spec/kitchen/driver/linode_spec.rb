@@ -128,7 +128,7 @@ describe Kitchen::Driver::Linode do
 
     context 'when a server is already created' do
       it 'does not create a new instance' do
-        state[:server_id] = '1'
+        state[:linode_id] = '1'
         expect(driver).not_to receive(:create_server)
         driver.create(state)
       end
@@ -159,7 +159,7 @@ describe Kitchen::Driver::Linode do
 
       it 'returns nil, but modifies the state' do
         expect(driver.send(:create, state)).to eq(nil)
-        expect(state[:server_id]).to eq('test123')
+        expect(state[:linode_id]).to eq('test123')
       end
 
       it 'throws an Action error when trying to create_server' do
