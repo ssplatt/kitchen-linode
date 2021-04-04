@@ -26,5 +26,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency 'cane', '~> 3.0'
   spec.add_development_dependency 'countloc', '~> 0.4.0'
   spec.add_development_dependency 'rspec', '~> 3.4'
-  spec.add_development_dependency 'codeclimate-test-reporter', '~> 0.5'
+  spec.add_development_dependency 'simplecov'
 end
