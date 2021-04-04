@@ -231,8 +231,10 @@ module Kitchen
             jobname = ENV["JOB_NAME"]
           elsif ENV["TRAVIS_REPO_SLUG"]
             jobname = ENV["TRAVIS_REPO_SLUG"]
-          else
+          elsif config[:kitchen_root]
             jobname = File.basename(config[:kitchen_root])
+          else
+            jobname = 'job'
           end
           config[:server_name] = "kitchen-#{jobname}-#{instance.name}-#{Time.now.to_i.to_s}".tr(" /", "_")
         end
