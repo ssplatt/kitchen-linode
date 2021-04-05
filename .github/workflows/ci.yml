@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        ruby: ['2.5', '2.6', '2.7', '3.0']
+    name: Lint & Test with Ruby ${{ matrix.ruby }}
+    steps:
+      - uses: actions/checkout@v2
+      - name: 'Install build dependencies'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -yq libcurl4-openssl-dev
+          curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+          chmod +x ./cc-test-reporter
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby }}
+          bundler-cache: true
+      - name: Run test suite
+        if: matrix.ruby != 3.0
+        run: bundle exec rake
+      - name: Run test suite and publish Code Climate report
+        if: matrix.ruby == '3.0'
+        env:
+          CC_TEST_REPORTER_ID: e6d4bb7235b740943569bfe50196b620353970884a75f466d11cd37a2fc250f6
+        run: |
+          ./cc-test-reporter before-build
+          bundle exec rake
+          ./cc-test-reporter after-build --exit-code $?
