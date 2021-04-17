@@ -77,7 +77,7 @@ describe Kitchen::Driver::Linode do
       end
       
       nils = [
-        :server_name,
+        :label,
         :password
       ]
       nils.each do |i|
@@ -95,7 +95,7 @@ describe Kitchen::Driver::Linode do
           type: 'g6-standard-2',
           kernel: 'linode/grub2',
           username: 'someuser',
-          server_name: 'thisserver',
+          label: 'thisserver',
           private_key_path: '/path/to/id_rsa',
           public_key_path: '/path/to/id_rsa.pub',
           password: 'somepassword'
@@ -110,7 +110,7 @@ describe Kitchen::Driver::Linode do
       end
 
       it 'overrides server name prefix with explicit server name, if given' do
-        expect(driver[:server_name]).to eq(config[:server_name])
+        expect(driver[:label]).to eq(config[:label])
       end
     end
   end

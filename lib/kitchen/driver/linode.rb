@@ -32,7 +32,7 @@ module Kitchen
       
       default_config :username, 'root'
       default_config :password, nil
-      default_config :server_name, nil
+      default_config :label, nil
       default_config :image, 'linode/debian10'
       default_config :region, 'us-east'
       default_config :type, 'g6-nanode-1'
@@ -59,15 +59,15 @@ module Kitchen
 
       def create(state)
         # create and boot server
-        config_server_name
+        config_label
         set_password
         
         if state[:linode_id]
-          info "#{config[:server_name]} (#{state[:linode_id]}) already exists."
+          info "#{config[:label]} (#{state[:linode_id]}) already exists."
           return
         end
         
-        info("Creating Linode - #{config[:server_name]}")
+        info("Creating Linode - #{config[:label]}")
         
         server = create_server
         
@@ -150,7 +150,7 @@ module Kitchen
         compute.servers.create(
           :region => region,
           :type => type,
-          :name => config[:server_name],
+          :label => config[:label],
           :image => image,
           :kernel => kernel,
           :username => config[:username],
@@ -200,10 +200,10 @@ module Kitchen
       end
       
       # Set the proper server name in the config
-      def config_server_name
-        if config[:server_name]
-          config[:vm_hostname] = "#{config[:server_name]}"
-          config[:server_name] = "kitchen-#{config[:server_name]}-#{instance.name}-#{Time.now.to_i.to_s}"
+      def config_label
+        if config[:label]
+          config[:vm_hostname] = "#{config[:label]}"
+          config[:label] = "kitchen-#{config[:label]}-#{instance.name}-#{Time.now.to_i.to_s}"
         else
           config[:vm_hostname] = "#{instance.name}"
           if ENV["JOB_NAME"]
@@ -216,12 +216,12 @@ module Kitchen
           else
             jobname = 'job'
           end
-          config[:server_name] = "kitchen-#{jobname}-#{instance.name}-#{Time.now.to_i.to_s}".tr(" /", "_")
+          config[:label] = "kitchen-#{jobname}-#{instance.name}-#{Time.now.to_i.to_s}".tr(" /", "_")
         end
         
         # cut to fit Linode 32 character maximum
-        if config[:server_name].is_a?(String) && config[:server_name].size >= 32
-          config[:server_name] = "#{config[:server_name][0..29]}#{rand(10..99)}"
+        if config[:label].is_a?(String) && config[:label].size >= 32
+          config[:label] = "#{config[:label][0..29]}#{rand(10..99)}"
         end
       end
       

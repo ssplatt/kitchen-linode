@@ -46,7 +46,7 @@ LINODE_TOKEN        Linode API token environment variable, default: nil
 :ssh_timeout        ssh timeout, default: 600 (seconds)
 :sudo               use sudo, default: True
 :port               ssh port, default: 22
-:server_name        set the hostname and linode name
+:label              set the hostname and linode label
 ```
 
 ## <a name="usage"></a> Usage
