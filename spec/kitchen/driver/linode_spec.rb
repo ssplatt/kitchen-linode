@@ -92,7 +92,7 @@ describe Kitchen::Driver::Linode do
         {
           image: 139,
           region: 'eu-central',
-          flavor: 2,
+          type: 'g6-standard-2',
           kernel: 215,
           username: 'someuser',
           server_name: 'thisserver',

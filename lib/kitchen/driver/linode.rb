@@ -35,7 +35,7 @@ module Kitchen
       default_config :server_name, nil
       default_config :image, 140
       default_config :region, 'us-east'
-      default_config :flavor, 1
+      default_config :type, 'g6-nanode-1'
       default_config :payment_terms, 1
       default_config :kernel, 138
       
@@ -111,22 +111,14 @@ module Kitchen
         return region
       end
       
-      def get_flavor
-        if config[:flavor].is_a? Integer
-          if config[:flavor] < 1024
-            flavor = compute.flavors.find { |f| f.id == config[:flavor] }
-          else
-            flavor = compute.flavors.find { |f| f.ram == config[:flavor] }
-          end
-        else
-          flavor = compute.flavors.find { |f| f.name =~ /#{config[:flavor]}/ }
+      def get_type
+        type = compute.types.find { |type| type.id == config[:type] }
+
+        if type.nil?
+          fail(UserError, "No match for type: #{config[:type]}")
         end
-        
-        if flavor.nil?
-          fail(UserError, "No match for flavor: #{config[:flavor]}")
-        end
-        info "Got flavor: #{flavor.name}..."
-        return flavor
+        info "Got type: #{type.id}..."
+        return type
       end
       
       def get_image
@@ -157,14 +149,14 @@ module Kitchen
       
       def create_server
         region = get_region
-        flavor = get_flavor
+        type = get_type
         image = get_image
         kernel = get_kernel
         
         # submit new linode request
         compute.servers.create(
           :region => region,
-          :flavor => flavor, 
+          :type => type,
           :payment_terms => config[:payment_terms], 
           :name => config[:server_name],
           :image => image,

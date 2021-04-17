@@ -39,7 +39,7 @@ LINODE_TOKEN        Linode API token environment variable, default: nil
 :password           password for user, default: randomly generated hash
 :image              Linux distribution, default: "Debian 8"
 :region             region, default: "us-east"
-:flavor             linode type/amount of RAM, default: "Linode 1024"
+:type               linode type, default: "g6-nanode-1"
 :payment_terms      if you happen to have legacy, default: 1
 :kernel             Linux kernel, default: "Latest 64 bit"
 :private_key_path   Location of your private key file, default: "~/.ssh/id_rsa"
@@ -121,7 +121,7 @@ If you want to change any of the default settings, you can do so in the 'platfor
 platforms:
   - name: debian_jessie
     driver:
-      flavor: 2048
+      type: g6-standard-2
       region: eu-central
       kernel: 4.0.2-x86_64-linode56
       image: Debian 7
