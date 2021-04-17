@@ -34,7 +34,7 @@ module Kitchen
       default_config :password, nil
       default_config :server_name, nil
       default_config :image, 140
-      default_config :data_center, 4
+      default_config :region, 'us-east'
       default_config :flavor, 1
       default_config :payment_terms, 1
       default_config :kernel, 138
@@ -101,18 +101,14 @@ module Kitchen
         Fog::Compute.new(provider: :linode, linode_token: config[:linode_token])
       end
       
-      def get_dc
-        if config[:data_center].is_a? Integer
-          data_center = compute.data_centers.find { |dc| dc.id == config[:data_center] }
-        else
-          data_center = compute.data_centers.find { |dc| dc.location =~ /#{config[:data_center]}/ }
+      def get_region
+        region = compute.regions.find { |region| region.id == config[:region] }
+
+        if region.nil?
+          fail(UserError, "No match for region: #{config[:region]}")
         end
-        
-        if data_center.nil?
-          fail(UserError, "No match for data_center: #{config[:data_center]}")
-        end
-        info "Got data center: #{data_center.location}..."
-        return data_center
+        info "Got region: #{region.id}..."
+        return region
       end
       
       def get_flavor
@@ -160,14 +156,14 @@ module Kitchen
       end
       
       def create_server
-        data_center = get_dc
+        region = get_region
         flavor = get_flavor
         image = get_image
         kernel = get_kernel
         
         # submit new linode request
         compute.servers.create(
-          :data_center => data_center,
+          :region => region,
           :flavor => flavor, 
           :payment_terms => config[:payment_terms], 
           :name => config[:server_name],

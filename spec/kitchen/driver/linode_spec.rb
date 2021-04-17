@@ -91,7 +91,7 @@ describe Kitchen::Driver::Linode do
       let(:config) do
         {
           image: 139,
-          data_center: 10,
+          region: 'eu-central',
           flavor: 2,
           kernel: 215,
           username: 'someuser',

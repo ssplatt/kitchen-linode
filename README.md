@@ -38,7 +38,7 @@ LINODE_TOKEN        Linode API token environment variable, default: nil
 :username           ssh user name, default: "root"
 :password           password for user, default: randomly generated hash
 :image              Linux distribution, default: "Debian 8"
-:data_center        data center, default: "Atlanta"
+:region             region, default: "us-east"
 :flavor             linode type/amount of RAM, default: "Linode 1024"
 :payment_terms      if you happen to have legacy, default: 1
 :kernel             Linux kernel, default: "Latest 64 bit"
@@ -122,7 +122,7 @@ platforms:
   - name: debian_jessie
     driver:
       flavor: 2048
-      data_center: Dallas
+      region: eu-central
       kernel: 4.0.2-x86_64-linode56
       image: Debian 7
 # ...<snip>...
