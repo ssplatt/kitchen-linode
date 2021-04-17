@@ -41,7 +41,7 @@ LINODE_TOKEN        Linode API token environment variable, default: nil
 :region             region, default: "us-east"
 :type               linode type, default: "g6-nanode-1"
 :payment_terms      if you happen to have legacy, default: 1
-:kernel             Linux kernel, default: "Latest 64 bit"
+:kernel             Linux kernel, default: "linode/grub2"
 :private_key_path   Location of your private key file, default: "~/.ssh/id_rsa"
 :public_key_path    Location of your public key file, default: "~/.ssh/id_rsa.pub"
 :ssh_timeout        ssh timeout, default: 600 (seconds)
@@ -123,7 +123,7 @@ platforms:
     driver:
       type: g6-standard-2
       region: eu-central
-      kernel: 4.0.2-x86_64-linode56
+      kernel: linode/latest-64bit
       image: Debian 7
 # ...<snip>...
 ```

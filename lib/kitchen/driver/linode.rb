@@ -37,7 +37,7 @@ module Kitchen
       default_config :region, 'us-east'
       default_config :type, 'g6-nanode-1'
       default_config :payment_terms, 1
-      default_config :kernel, 138
+      default_config :kernel, 'linode/grub2'
       
       default_config :sudo, true
       default_config :ssh_timeout, 600
@@ -135,15 +135,12 @@ module Kitchen
       end
       
       def get_kernel
-        if config[:kernel].is_a? Integer
-          kernel = compute.kernels.find { |k| k.id == config[:kernel] }
-        else
-          kernel = compute.kernels.find { |k| k.name =~ /#{config[:kernel]}/ }
-        end
+        kernel = compute.kernels.find { |kernel| kernel.id == config[:kernel] }
+
         if kernel.nil?
           fail(UserError, "No match for kernel: #{config[:kernel]}")
         end
-        info "Got kernel: #{kernel.name}..."
+        info "Got kernel: #{kernel.id}..."
         return kernel
       end
       

@@ -93,7 +93,7 @@ describe Kitchen::Driver::Linode do
           image: 139,
           region: 'eu-central',
           type: 'g6-standard-2',
-          kernel: 215,
+          kernel: 'linode/grub2',
           username: 'someuser',
           server_name: 'thisserver',
           private_key_path: '/path/to/id_rsa',
