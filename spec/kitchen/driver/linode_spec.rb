@@ -90,7 +90,7 @@ describe Kitchen::Driver::Linode do
     context 'overridden options' do
       let(:config) do
         {
-          image: 139,
+          image: 'linode/ubuntu20.04',
           region: 'eu-central',
           type: 'g6-standard-2',
           kernel: 'linode/grub2',

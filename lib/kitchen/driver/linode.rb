@@ -33,7 +33,7 @@ module Kitchen
       default_config :username, 'root'
       default_config :password, nil
       default_config :server_name, nil
-      default_config :image, 140
+      default_config :image, 'linode/debian10'
       default_config :region, 'us-east'
       default_config :type, 'g6-nanode-1'
       default_config :payment_terms, 1
@@ -122,15 +122,12 @@ module Kitchen
       end
       
       def get_image
-        if config[:image].is_a? Integer
-          image = compute.images.find { |i| i.id == config[:image] }
-        else
-          image = compute.images.find { |i| i.name =~ /#{config[:image]}/ }
-        end
+        image = compute.images.find { |image| image.id == config[:image] }
+
         if image.nil?
           fail(UserError, "No match for image: #{config[:image]}")
         end
-        info "Got image: #{image.name}..."
+        info "Got image: #{image.id}..."
         return image
       end
       

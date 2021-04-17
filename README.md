@@ -37,7 +37,7 @@ For many of these, you can specify an ID number, a full name, or a partial name 
 LINODE_TOKEN        Linode API token environment variable, default: nil
 :username           ssh user name, default: "root"
 :password           password for user, default: randomly generated hash
-:image              Linux distribution, default: "Debian 8"
+:image              image, default: "linode/debian10"
 :region             region, default: "us-east"
 :type               linode type, default: "g6-nanode-1"
 :payment_terms      if you happen to have legacy, default: 1
@@ -74,7 +74,7 @@ provisioner:
         - vim
 
 platforms:
-  - name: debian_jessie
+  - name: debian_buster
 
 suites:
   - name: default
@@ -102,7 +102,7 @@ provisioner:
         - vim
 
 platforms:
-  - name: debian_jessie
+  - name: debian_buster
 
 suites:
   - name: default
@@ -119,12 +119,12 @@ If you want to change any of the default settings, you can do so in the 'platfor
 ```yaml
 # ...<snip>...
 platforms:
-  - name: debian_jessie
+  - name: ubuntu_lts
     driver:
       type: g6-standard-2
       region: eu-central
       kernel: linode/latest-64bit
-      image: Debian 7
+      image: linode/ubuntu20.04
 # ...<snip>...
 ```
 
