@@ -36,7 +36,6 @@ module Kitchen
       default_config :image, 'linode/debian10'
       default_config :region, 'us-east'
       default_config :type, 'g6-nanode-1'
-      default_config :payment_terms, 1
       default_config :kernel, 'linode/grub2'
       
       default_config :sudo, true
@@ -151,7 +150,6 @@ module Kitchen
         compute.servers.create(
           :region => region,
           :type => type,
-          :payment_terms => config[:payment_terms], 
           :name => config[:server_name],
           :image => image,
           :kernel => kernel,

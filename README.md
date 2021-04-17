@@ -40,7 +40,6 @@ LINODE_TOKEN        Linode API token environment variable, default: nil
 :image              image, default: "linode/debian10"
 :region             region, default: "us-east"
 :type               linode type, default: "g6-nanode-1"
-:payment_terms      if you happen to have legacy, default: 1
 :kernel             Linux kernel, default: "linode/grub2"
 :private_key_path   Location of your private key file, default: "~/.ssh/id_rsa"
 :public_key_path    Location of your public key file, default: "~/.ssh/id_rsa.pub"
