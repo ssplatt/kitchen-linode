@@ -17,7 +17,7 @@
 # limitations under the License.
 
 require 'kitchen'
-require 'fog'
+require 'fog/linode'
 require_relative 'linode_version'
 
 module Kitchen
@@ -52,9 +52,9 @@ module Kitchen
         driver[:private_key_path] + '.pub' if driver[:private_key_path]
       end
       
-      default_config :api_key, ENV['LINODE_API_KEY']
+      default_config :linode_token, ENV['LINODE_TOKEN']
       
-      required_config :api_key
+      required_config :linode_token
       required_config :private_key_path
       required_config :public_key_path
 
@@ -98,7 +98,7 @@ module Kitchen
       private
       
       def compute
-        Fog::Compute.new(:provider => 'Linode', :linode_api_key => config[:api_key])
+        Fog::Compute.new(provider: :linode, linode_token: config[:linode_token])
       end
       
       def get_dc

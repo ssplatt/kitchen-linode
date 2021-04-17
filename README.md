@@ -34,7 +34,7 @@ Please read the [Driver usage][driver_usage] page for more details.
 For many of these, you can specify an ID number, a full name, or a partial name that will try to match something in the list but may not match exactly what you want.
 
 ```
-LINODE_API_KEY      Linode API Key environment variable, default: nil
+LINODE_TOKEN        Linode API token environment variable, default: nil
 :username           ssh user name, default: "root"
 :password           password for user, default: randomly generated hash
 :image              Linux distribution, default: "Debian 8"
@@ -52,10 +52,10 @@ LINODE_API_KEY      Linode API Key environment variable, default: nil
 
 ## <a name="usage"></a> Usage
 
-First, set your Linode API key in an environment variable:
+First, set your Linode API token in an environment variable:
 
 ```sh
-export LINODE_API_KEY='myrandomkey123123213h123bh12'
+export LINODE_TOKEN='myrandomtoken123123213h123bh12'
 ```
 
 Then, create a .kitchen.yml file:

@@ -11,7 +11,7 @@ require 'kitchen/driver/linode'
 require 'kitchen/provisioner/dummy'
 require 'kitchen/transport/dummy'
 require 'kitchen/verifier/dummy'
-require 'fog'
+require 'fog/linode'
 
 describe Kitchen::Driver::Linode do
   let(:logged_output) { StringIO.new }
@@ -46,11 +46,11 @@ describe Kitchen::Driver::Linode do
   describe '#finalize_config' do
     before(:each) { allow(File).to receive(:exist?).and_return(false) }
 
-    context 'private key, public key, and api key provided' do
+    context 'private key, public key, and api token provided' do
       let(:config) do
         { private_key_path: '/tmp/key', 
           public_key_path: '/tmp/key.pub',
-          api_key: 'mykey' }
+          linode_token: 'mytoken' }
       end
 
       it 'raises no error' do
@@ -138,7 +138,7 @@ describe Kitchen::Driver::Linode do
       let(:config) do
         {
           username: 'someuser',
-          api_key: 'somekey',
+          linode_token: 'somekey',
           disable_ssl_validation: false
         }
       end
