@@ -107,7 +107,7 @@ module Kitchen
           fail(UserError, "No match for region: #{config[:region]}")
         end
         info "Got region: #{region.id}..."
-        return region
+        return region.id
       end
       
       def get_type
@@ -117,7 +117,7 @@ module Kitchen
           fail(UserError, "No match for type: #{config[:type]}")
         end
         info "Got type: #{type.id}..."
-        return type
+        return type.id
       end
       
       def get_image
@@ -127,7 +127,7 @@ module Kitchen
           fail(UserError, "No match for image: #{config[:image]}")
         end
         info "Got image: #{image.id}..."
-        return image
+        return image.id
       end
       
       def get_kernel
@@ -137,7 +137,7 @@ module Kitchen
           fail(UserError, "No match for kernel: #{config[:kernel]}")
         end
         info "Got kernel: #{kernel.id}..."
-        return kernel
+        return kernel.id
       end
       
       def create_server
