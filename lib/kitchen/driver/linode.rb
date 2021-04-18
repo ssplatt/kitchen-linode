@@ -73,10 +73,10 @@ module Kitchen
         
         # assign the machine id for reference in other commands
         state[:linode_id] = server.id
-        state[:hostname] = server.public_ip_address
+        state[:hostname] = server.ipv4[0]
         info("Linode <#{state[:linode_id]}> created.")
         info("Waiting for linode to boot...")
-        server.wait_for { ready? }
+        server.wait_for { server.status == 'running' }
         info("Linode <#{state[:linode_id]}, #{state[:hostname]}> ready.")
         setup_ssh(state) if bourne_shell?
       rescue Fog::Errors::Error, Excon::Errors::Error => ex
@@ -154,7 +154,7 @@ module Kitchen
           :image => image,
           :kernel => kernel,
           :username => config[:username],
-          :password => config[:password]
+          :root_pass => config[:password]
         )
       end
       
