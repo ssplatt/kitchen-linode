@@ -33,6 +33,7 @@ module Kitchen
       default_config :username, 'root'
       default_config :password, nil
       default_config :label, nil
+      default_config :hostname, nil
       default_config :image, 'linode/debian10'
       default_config :region, 'us-east'
       default_config :type, 'g6-nanode-1'
@@ -59,6 +60,7 @@ module Kitchen
 
       def create(state)
         # create and boot server
+        config_hostname
         config_label
         set_password
         
@@ -172,15 +174,15 @@ module Kitchen
                            :password => config[:password],
                            :timeout => config[:ssh_timeout])
         pub_key = open(config[:public_key_path]).read
-        shortname = "#{config[:vm_hostname].split('.')[0]}"
-        hostsfile = "127.0.0.1 #{config[:vm_hostname]} #{shortname} localhost\n::1 #{config[:vm_hostname]} #{shortname} localhost"
+        shortname = "#{config[:hostname].split('.')[0]}"
+        hostsfile = "127.0.0.1 #{config[:hostname]} #{shortname} localhost\n::1 #{config[:hostname]} #{shortname} localhost"
         @max_interval = 60
         @max_retries = 10
         @retries = 0
         begin
           ssh.run([
             %(echo "#{hostsfile}" > /etc/hosts),
-            %(hostnamectl set-hostname #{config[:vm_hostname]}),
+            %(hostnamectl set-hostname #{config[:hostname]}),
             %(mkdir .ssh),
             %(echo "#{pub_key}" >> ~/.ssh/authorized_keys),
             %(passwd -l #{config[:username]})
@@ -202,10 +204,8 @@ module Kitchen
       # Set the proper server name in the config
       def config_label
         if config[:label]
-          config[:vm_hostname] = "#{config[:label]}"
           config[:label] = "kitchen-#{config[:label]}-#{instance.name}-#{Time.now.to_i.to_s}"
         else
-          config[:vm_hostname] = "#{instance.name}"
           if ENV["JOB_NAME"]
             # use jenkins job name variable. "kitchen_root" turns into "workspace" which is uninformative.
             jobname = ENV["JOB_NAME"]
@@ -222,6 +222,17 @@ module Kitchen
         # cut to fit Linode 32 character maximum
         if config[:label].is_a?(String) && config[:label].size >= 32
           config[:label] = "#{config[:label][0..29]}#{rand(10..99)}"
+        end
+      end
+
+      # Set the proper server hostname
+      def config_hostname
+        if config[:hostname].nil?
+          if config[:label]
+            config[:hostname] = "#{config[:label]}"
+          else
+            config[:hostname] = "#{instance.name}"
+          end
         end
       end
       
