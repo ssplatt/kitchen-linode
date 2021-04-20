@@ -37,7 +37,7 @@ For many of these, you can specify an ID number, a full name, or a partial name 
 LINODE_TOKEN        Linode API token environment variable, default: nil
 :username           ssh user name, default: "root"
 :password           password for user, default: randomly generated hash
-:image              image, default: nil
+:image              image, default: "linode/debian10"
 :region             region, default: "us-east"
 :type               linode type, default: "g6-nanode-1"
 :kernel             Linux kernel, default: "linode/grub2"
@@ -73,7 +73,7 @@ provisioner:
         - vim
 
 platforms:
-  - name: linode/debian10
+  - name: debian_buster
 
 suites:
   - name: default
@@ -101,7 +101,7 @@ provisioner:
         - vim
 
 platforms:
-  - name: linode/debian10
+  - name: debian_buster
 
 suites:
   - name: default
