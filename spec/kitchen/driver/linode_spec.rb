@@ -98,7 +98,8 @@ describe Kitchen::Driver::Linode do
           label: 'thisserver',
           private_key_path: '/path/to/id_rsa',
           public_key_path: '/path/to/id_rsa.pub',
-          password: 'somepassword'
+          password: 'somepassword',
+          api_retries: 2
         }
       end
 
@@ -143,7 +144,7 @@ describe Kitchen::Driver::Linode do
         }
       end
       let(:server) do
-        double(id: 'test123', wait_for: true, public_ip_address: %w(1.2.3.4))
+        double(id: 'test123', wait_for: true, ipv4: %w(1.2.3.4))
       end
 
       let(:driver) do
