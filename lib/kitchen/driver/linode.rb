@@ -63,7 +63,7 @@ module Kitchen
       def initialize(config)
         super
         log_method = lambda do |retries, exception|
-          warn "[Attempt ##{retries}] Retrying because [#{exception.class} - #{exception.message}]"
+          warn("[Attempt ##{retries}] Retrying because [#{exception.class} - #{exception.message}]")
         end
         Retryable.configure do |retry_config|
           retry_config.log_method   = log_method
@@ -96,6 +96,7 @@ module Kitchen
         info("Linode <#{state[:linode_id]}, #{state[:hostname]}> ready.")
         setup_ssh(state) if bourne_shell?
       rescue Fog::Errors::Error, Excon::Errors::Error => ex
+        error("Failed to create server: #{ex.class} - #{ex.message}")
         raise ActionFailed, ex.message
       end
 
