@@ -62,12 +62,13 @@ module Kitchen
 
       def initialize(config)
         super
+        # configure to retry on timeouts by default
         log_method = lambda do |retries, exception|
-          warn("[Attempt ##{retries}] Retrying because [#{exception.class} - #{exception.message}]")
+          warn("[Attempt ##{retries}] Retrying because [#{exception.class}]")
         end
         Retryable.configure do |retry_config|
           retry_config.log_method   = log_method
-          retry_config.on           = Excon::Error::RequestTimeout
+          retry_config.on           = [Excon::Error::Timeout, Excon::Error::RequestTimeout]
           retry_config.tries        = config[:api_retries]
         end
       end
@@ -79,21 +80,20 @@ module Kitchen
         set_password
 
         if state[:linode_id]
-          info "#{config[:label]} (#{state[:linode_id]}) already exists."
+          info "Linode <#{state[:linode_id]}, #{state[:linode_label]}> already exists."
           return
         end
-
-        info("Creating Linode - #{config[:label]}")
 
         server = create_server
 
         # assign the machine id for reference in other commands
         state[:linode_id] = server.id
+        state[:linode_label] = server.label
         state[:hostname] = server.ipv4[0]
-        info("Linode <#{state[:linode_id]}> created.")
+        info("Linode <#{state[:linode_id]}, #{state[:linode_label]}> created.")
         info("Waiting for linode to boot...")
         server.wait_for { server.status == 'running' }
-        info("Linode <#{state[:linode_id]}, #{state[:hostname]}> ready.")
+        info("Linode <#{state[:linode_id]}, #{state[:linode_label]}> ready.")
         setup_ssh(state) if bourne_shell?
       rescue Fog::Errors::Error, Excon::Errors::Error => ex
         error("Failed to create server: #{ex.class} - #{ex.message}")
@@ -102,15 +102,17 @@ module Kitchen
 
       def destroy(state)
         return if state[:linode_id].nil?
-        server = nil
-        Retryable.retryable do
-          server = compute.servers.get(state[:linode_id])
+        begin
+          Retryable.retryable do
+            server = compute.servers.get(state[:linode_id])
+            server.destroy
+          end
+          info("Linode <#{state[:linode_id]}, #{state[:linode_label]}> destroyed.")
+        rescue Excon::Error::NotFound
+          info("Linode <#{state[:linode_id]}, #{state[:linode_label]}> not found.")
         end
-        Retryable.retryable do
-          server.destroy
-        end
-        info("Linode <#{state[:linode_id]}> destroyed.")
         state.delete(:linode_id)
+        state.delete(:linode_label)
         state.delete(:pub_ip)
       end
 
@@ -177,23 +179,62 @@ module Kitchen
         return kernel.id
       end
 
+      # generate a unique label
+      def generate_unique_label
+        # Try to generate a unique suffix and make sure nothing else on the account
+        # has the same label.
+        # The iterator is a randomized list from 0 to 99.
+        for suffix in (0..99).to_a.sample(100)
+          label = "#{config[:label]}#{'%02d' % suffix}"
+          Retryable.retryable do
+            if compute.servers.find { |server| server.label == label }.nil?
+              return label
+            end
+          end
+        end
+        # if we're here that means we couldn't make a unique label with the given prefix
+        # yell at the user that they need to clean up their account.
+        error("Unable to generate a unique label with prefix #{config[:label]}. Might need to cleanup your account.")
+        fail(UserError, "Unable to generate a unique label.")
+      end
+
       def create_server
         region = get_region
         type = get_type
         image = get_image
         kernel = get_kernel
-
-        Retryable.retryable do
-          # submit new linode request
-          compute.servers.create(
-            :region => region,
-            :type => type,
-            :label => config[:label],
-            :image => image,
-            :kernel => kernel,
-            :username => config[:username],
-            :root_pass => config[:password]
-          )
+        # callback to check if we can retry
+        create_exception_callback = lambda do |exception|
+          if not exception.response.body.include? "Label must be unique"
+            # we want to float this to the user instead of retrying
+            raise exception
+          end
+          info("Got [#{exception.class}] due to non-unique label when creating server.")
+          info("Will try again with a new label if we can.")
+        end
+        # submit new linode request
+        Retryable.retryable(
+          on: [Excon::Error::BadRequest],
+          tries: config[:api_retries],
+          exception_cb: create_exception_callback,
+          log_method: proc {}
+        ) do
+          # This will retry if we get a response that the label must be
+          # unique. We wrap both of these in a retry so we generate a
+          # new label when we try again.
+          label = generate_unique_label
+          info("Creating Linode - #{label}")
+          Retryable.retryable do
+            compute.servers.create(
+              :region => region,
+              :type => type,
+              :label => label,
+              :image => image,
+              :kernel => kernel,
+              :username => config[:username],
+              :root_pass => config[:password]
+            )
+          end
         end
       end
 
@@ -257,8 +298,9 @@ module Kitchen
         end
 
         # cut to fit Linode 32 character maximum
-        if config[:label].is_a?(String) && config[:label].size >= 32
-          config[:label] = "#{config[:label][0..29]}#{rand(10..99)}"
+        # we trim to 30 so we can add a random 2 digit suffix on later
+        if config[:label].is_a?(String) && config[:label].size >= 30
+          config[:label] = "#{config[:label][0..29]}"
         end
       end
 
