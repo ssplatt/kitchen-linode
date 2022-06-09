@@ -98,7 +98,8 @@ describe Kitchen::Driver::Linode do
           label: 'thisserver',
           private_key_path: '/path/to/id_rsa',
           public_key_path: '/path/to/id_rsa.pub',
-          password: 'somepassword'
+          password: 'somepassword',
+          api_retries: 2
         }
       end
 
@@ -143,13 +144,13 @@ describe Kitchen::Driver::Linode do
         }
       end
       let(:server) do
-        double(id: 'test123', wait_for: true, public_ip_address: %w(1.2.3.4))
+        double(id: 123456, wait_for: true, ipv4: %w(1.2.3.4), label: 'test123')
       end
 
       let(:driver) do
         d = described_class.new(config)
         allow(d).to receive(:create_server).and_return(server)
-        allow(server).to receive(:id).and_return('test123')
+        allow(server).to receive(:id).and_return(123456)
 
         allow(server).to receive(:wait_for)
           .with(an_instance_of(Fixnum)).and_yield
@@ -159,7 +160,8 @@ describe Kitchen::Driver::Linode do
 
       it 'returns nil, but modifies the state' do
         expect(driver.send(:create, state)).to eq(nil)
-        expect(state[:linode_id]).to eq('test123')
+        expect(state[:linode_id]).to eq(123456)
+        expect(state[:linode_label]).to eq('test123')
       end
 
       it 'throws an Action error when trying to create_server' do

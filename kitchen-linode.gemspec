@@ -20,6 +20,7 @@ Gem::Specification.new do |spec|
 
   spec.add_dependency 'test-kitchen', '~> 1.4'
   spec.add_dependency 'fog-linode', '~> 0.0.1.rc2'
+  spec.add_dependency 'retryable', '>= 2.0', '< 4.0'
 
   spec.add_development_dependency 'bundler'
   spec.add_development_dependency 'rake', '~> 10.4'

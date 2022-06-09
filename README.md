@@ -47,6 +47,7 @@ LINODE_TOKEN        Linode API token environment variable, default: nil
 :sudo               use sudo, default: True
 :port               ssh port, default: 22
 :label              set the hostname and linode label
+:api_retries        how many times to retry API calls on timeouts or rate limits, default: 5
 ```
 
 ## <a name="usage"></a> Usage
