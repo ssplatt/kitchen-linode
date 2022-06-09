@@ -39,7 +39,7 @@ module Kitchen
       default_config :region, 'us-east'
       default_config :type, 'g6-nanode-1'
       default_config :kernel, 'linode/grub2'
-      default_config :api_retries, 3
+      default_config :api_retries, 5
 
       default_config :sudo, true
       default_config :ssh_timeout, 600
@@ -62,14 +62,27 @@ module Kitchen
 
       def initialize(config)
         super
-        # configure to retry on timeouts by default
+        # callback to check if we can retry
+        retry_exception_callback = lambda do |exception|
+          if exception.class == Excon::Error::TooManyRequests
+            # add a random value between 2 and 20 to the sleep to splay retries
+            sleep_time = exception.response.headers["Retry-After"].to_i + rand(2..20)
+            warn("Rate limit encountered, sleeping #{sleep_time} seconds for it to expire.")
+            sleep(sleep_time)
+          end
+        end
         log_method = lambda do |retries, exception|
           warn("[Attempt ##{retries}] Retrying because [#{exception.class}]")
         end
+        # configure to retry on timeouts and rate limits by default
         Retryable.configure do |retry_config|
           retry_config.log_method   = log_method
-          retry_config.on           = [Excon::Error::Timeout, Excon::Error::RequestTimeout]
+          retry_config.exception_cb = retry_exception_callback
+          retry_config.on           = [Excon::Error::Timeout,
+                                       Excon::Error::RequestTimeout,
+                                       Excon::Error::TooManyRequests]
           retry_config.tries        = config[:api_retries]
+          retry_config.sleep        = lambda { |n| 2**n }  # sleep 1, 2, 4, etc. each try
         end
       end
 
