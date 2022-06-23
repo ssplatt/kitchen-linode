@@ -16,6 +16,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+require 'securerandom'
 require 'kitchen'
 require 'fog/linode'
 require 'retryable'
@@ -31,34 +32,36 @@ module Kitchen
       kitchen_driver_api_version 2
       plugin_version Kitchen::Driver::LINODE_VERSION
 
-      default_config :username, 'root'
-      default_config :password, nil
+      default_config :password, SecureRandom.uuid
+      default_config :disable_password, true
       default_config :label, nil
+      default_config :tags, ['kitchen']
       default_config :hostname, nil
       default_config :image, nil
-      default_config :region, 'us-east'
+      default_config :region, ENV['LINODE_REGION'] || 'us-east'
       default_config :type, 'g6-nanode-1'
       default_config :kernel, 'linode/grub2'
       default_config :api_retries, 5
-
-      default_config :sudo, true
-      default_config :ssh_timeout, 600
+      default_config :authorized_users, ENV['LINODE_AUTH_USERS'].to_s.split(',')
 
       default_config :private_key_path do
-        %w(id_rsa).map do |k|
-          f = File.expand_path("~/.ssh/#{k}")
-          f if File.exist?(f)
-        end.compact.first
+        [
+          File.expand_path('~/.ssh/id_rsa'),
+          File.expand_path('~/.ssh/id_dsa'),
+          File.expand_path('~/.ssh/identity'),
+          File.expand_path('~/.ssh/id_ecdsa')
+        ].find { |path| File.exist?(path) }
       end
+
       default_config :public_key_path do |driver|
-        driver[:private_key_path] + '.pub' if driver[:private_key_path]
+        if driver[:private_key_path] and File.exist?(driver[:private_key_path] + '.pub')
+          driver[:private_key_path] + '.pub'
+        end
       end
 
       default_config :linode_token, ENV['LINODE_TOKEN']
 
       required_config :linode_token
-      required_config :private_key_path
-      required_config :public_key_path
 
       def initialize(config)
         super
@@ -88,26 +91,23 @@ module Kitchen
 
       def create(state)
         # create and boot server
-        config_hostname
-        config_label
-        set_password
-
         if state[:linode_id]
           info "Linode <#{state[:linode_id]}, #{state[:linode_label]}> already exists."
           return
         end
 
+        config_hostname
+        config_label
         server = create_server
 
         # assign the machine id for reference in other commands
-        state[:linode_id] = server.id
-        state[:linode_label] = server.label
-        state[:hostname] = server.ipv4[0]
+        update_state(state, server)
         info("Linode <#{state[:linode_id]}, #{state[:linode_label]}> created.")
         info("Waiting for linode to boot...")
         server.wait_for { server.status == 'running' }
+        instance.transport.connection(state).wait_until_ready
         info("Linode <#{state[:linode_id]}, #{state[:linode_label]}> ready.")
-        setup_ssh(state) if bourne_shell?
+        setup_server(state) if bourne_shell?
       rescue Fog::Errors::Error, Excon::Errors::Error => ex
         error("Failed to create server: #{ex.class} - #{ex.message}")
         raise ActionFailed, ex.message
@@ -196,18 +196,21 @@ module Kitchen
       def generate_unique_label
         # Try to generate a unique suffix and make sure nothing else on the account
         # has the same label.
-        # The iterator is a randomized list from 0 to 99.
-        for suffix in (0..99).to_a.sample(100)
-          label = "#{config[:label]}#{'%02d' % suffix}"
+        # The iterator is a randomized list from 0 to 999.
+        for suffix in (0..999).to_a.sample(1000)
+          label = "#{config[:label]}_#{'%03d' % suffix}"
           Retryable.retryable do
             if compute.servers.find { |server| server.label == label }.nil?
               return label
             end
           end
         end
-        # if we're here that means we couldn't make a unique label with the given prefix
-        # yell at the user that they need to clean up their account.
-        error("Unable to generate a unique label with prefix #{config[:label]}. Might need to cleanup your account.")
+        # If we're here that means we couldn't make a unique label with the
+        # given prefix. Yell at the user that they need to clean up their
+        # account.
+        error(
+          "Unable to generate a unique label with prefix #{config[:label]}. " \
+          "Might need to cleanup your account.")
         fail(UserError, "Unable to generate a unique label.")
       end
 
@@ -216,6 +219,7 @@ module Kitchen
         type = get_type
         image = get_image
         kernel = get_kernel
+        authorized_keys = config[:public_key_path] ? [open(config[:public_key_path]).read.strip] : []
         # callback to check if we can retry
         create_exception_callback = lambda do |exception|
           if not exception.response.body.include? "Label must be unique"
@@ -242,78 +246,47 @@ module Kitchen
               :region => region,
               :type => type,
               :label => label,
+              :tags => config[:tags],
               :image => image,
               :kernel => kernel,
-              :username => config[:username],
-              :root_pass => config[:password]
+              :root_pass => config[:password],
+              :authorized_keys => authorized_keys,
+              :authorized_users => config[:authorized_users]
             )
           end
         end
       end
 
-      def setup_ssh(state)
-        set_ssh_keys
-        state[:ssh_key] = config[:private_key_path]
-        do_ssh_setup(state, config)
-      end
-
-      def do_ssh_setup(state, config)
-        info "Setting up SSH access for key <#{config[:public_key_path]}>"
-        info "Connecting <#{config[:username]}@#{state[:hostname]}>..."
-        ssh = Fog::SSH.new(state[:hostname],
-                           config[:username],
-                           :password => config[:password],
-                           :timeout => config[:ssh_timeout])
-        pub_key = open(config[:public_key_path]).read
+      def setup_server(state)
+        info "Setting hostname..."
         shortname = "#{config[:hostname].split('.')[0]}"
-        hostsfile = "127.0.0.1 #{config[:hostname]} #{shortname} localhost\n::1 #{config[:hostname]} #{shortname} localhost"
-        @max_interval = 60
-        @max_retries = 10
-        @retries = 0
-        begin
-          ssh.run([
-            %(echo "#{hostsfile}" > /etc/hosts),
-            %(hostnamectl set-hostname #{config[:hostname]}),
-            %(mkdir .ssh),
-            %(echo "#{pub_key}" >> ~/.ssh/authorized_keys),
-            %(passwd -l #{config[:username]})
-          ])
-        rescue
-          @retries ||= 0
-          if @retries < @max_retries
-            info "Retrying connection..."
-            sleep [2**(@retries - 1), @max_interval].min
-            @retries += 1
-            retry
-          else
-            raise
-          end
+        hostsfile = "127.0.0.1 #{config[:hostname]} #{shortname} " \
+        "localhost\n::1 #{config[:hostname]} #{shortname} localhost"
+        instance.transport.connection(state).execute(
+            "echo '#{hostsfile}' > /etc/hosts &&" \
+            "hostnamectl set-hostname #{config[:hostname]}"
+          )
+        if config[:private_key_path] and config[:public_key_path] and config[:disable_password]
+          info "Disabling SSH password login..."
+          instance.transport.connection(state).execute(
+            "sed -i 's/^PasswordAuthentication .*$/PasswordAuthentication no/' /etc/ssh/sshd_config &&" \
+            "systemctl restart ssh || systemctl restart sshd || service sshd restart ||" \
+            "rc-service sshd restart || /etc/rc.d/rc.sshd restart || /etc/init.d/sshd restart"
+          )
         end
-        info "Done setting up SSH access."
+        info "Done setting up server."
       end
 
       # Set the proper server name in the config
       def config_label
-        if config[:label]
-          config[:label] = "kitchen-#{config[:label]}-#{instance.name}-#{Time.now.to_i.to_s}"
-        else
-          if ENV["JOB_NAME"]
-            # use jenkins job name variable. "kitchen_root" turns into "workspace" which is uninformative.
-            jobname = ENV["JOB_NAME"]
-          elsif ENV["GITHUB_JOB"]
-            jobname = ENV["GITHUB_JOB"]
-          elsif config[:kitchen_root]
-            jobname = File.basename(config[:kitchen_root])
-          else
-            jobname = 'job'
-          end
-          config[:label] = "kitchen-#{jobname}-#{instance.name}-#{Time.now.to_i.to_s}".tr(" /", "_")
+        if not config[:label]
+          jobname = ENV["JOB_NAME"] || ENV["GITHUB_JOB"] || File.basename(config[:kitchen_root])
+          config[:label] = "kitchen-#{jobname}-#{instance.name}".tr(" /", "_")
         end
-
-        # cut to fit Linode 32 character maximum
-        # we trim to 30 so we can add a random 2 digit suffix on later
-        if config[:label].is_a?(String) && config[:label].size >= 30
-          config[:label] = "#{config[:label][0..29]}"
+        # cut to fit Linode 64 character maximum
+        # we trim to 60 so we can add '_' with a random 3 digit suffix later
+        if config[:label].size >= 60
+          config[:label] = "#{config[:label][0..59]}"
         end
       end
 
@@ -328,20 +301,15 @@ module Kitchen
         end
       end
 
-      # ensure a password is set
-      def set_password
-        if config[:password].nil?
-          config[:password] = [*('a'..'z'),*('A'..'Z'),*('0'..'9')].sample(15).join
-        end
-      end
-
-      # set ssh keys
-      def set_ssh_keys
-        if config[:private_key_path]
-          config[:private_key_path] = File.expand_path(config[:private_key_path])
-        end
-        if config[:public_key_path]
-          config[:public_key_path] = File.expand_path(config[:public_key_path])
+      def update_state(state, server)
+        state[:linode_id] = server.id
+        state[:linode_label] = server.label
+        state[:hostname] = server.ipv4[0]
+        if config[:private_key_path] and config[:public_key_path]
+          state[:ssh_key] = config[:private_key_path]
+        else
+          warn "Using SSH password auth, some things may not work."
+          state[:password] = config[:password]
         end
       end
     end
