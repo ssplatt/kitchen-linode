@@ -1,10 +1,9 @@
 require "bundler/gem_tasks"
-require 'cane/rake_task'
-require 'rspec/core/rake_task'
+require "rspec/core/rake_task"
 
-desc "Run cane to check quality metrics"
-Cane::RakeTask.new do |cane|
-  cane.canefile = './.cane'
+desc "Run all specs in spec directory"
+RSpec::Core::RakeTask.new(:test) do |t|
+  t.pattern = "spec/**/*_spec.rb"
 end
 
 desc "Display LOC stats"
@@ -13,10 +12,14 @@ task :stats do
   sh "countloc -r lib"
 end
 
-desc "Run all quality tasks"
-task :quality => [:cane, :stats]
+begin
+  require "chefstyle"
+  require "rubocop/rake_task"
+  RuboCop::RakeTask.new(:style) do |task|
+    task.options += ["--display-cop-names", "--no-color"]
+  end
+rescue LoadError
+  puts "chefstyle is not available. (sudo) gem install chefstyle to do style checking."
+end
 
-desc 'Run RSpec unit tests'
-RSpec::Core::RakeTask.new(:spec)
-
-task :default => [:spec]
+task default: %i{test style}

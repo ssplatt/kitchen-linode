@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 #
 # Author:: Brett Taylor (<btaylor@linode.com>)
 #
@@ -16,11 +15,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-require 'securerandom'
-require 'kitchen'
-require 'fog/linode'
-require 'retryable'
-require_relative 'linode_version'
+require "securerandom" unless defined?(SecureRandom)
+require "kitchen"
+require "fog/linode"
+require "retryable" unless defined?(Retryable)
+require_relative "linode_version"
 
 module Kitchen
 
@@ -32,34 +31,36 @@ module Kitchen
       kitchen_driver_api_version 2
       plugin_version Kitchen::Driver::LINODE_VERSION
 
-      default_config :password, SecureRandom.uuid
-      default_config :disable_password, true
+      default_config :password do
+        SecureRandom.uuid
+      end
+      default_config :disable_ssh_password, true
       default_config :label, nil
-      default_config :tags, ['kitchen']
+      default_config :tags, ["kitchen"]
       default_config :hostname, nil
       default_config :image, nil
-      default_config :region, ENV['LINODE_REGION'] || 'us-east'
-      default_config :type, 'g6-nanode-1'
-      default_config :kernel, 'linode/grub2'
+      default_config :region, ENV["LINODE_REGION"] || "us-east"
+      default_config :type, "g6-nanode-1"
+      default_config :kernel, "linode/grub2"
       default_config :api_retries, 5
-      default_config :authorized_users, ENV['LINODE_AUTH_USERS'].to_s.split(',')
+      default_config :authorized_users, ENV["LINODE_AUTH_USERS"].to_s.split(",")
 
       default_config :private_key_path do
         [
-          File.expand_path('~/.ssh/id_rsa'),
-          File.expand_path('~/.ssh/id_dsa'),
-          File.expand_path('~/.ssh/identity'),
-          File.expand_path('~/.ssh/id_ecdsa')
+          File.expand_path("~/.ssh/id_rsa"),
+          File.expand_path("~/.ssh/id_dsa"),
+          File.expand_path("~/.ssh/identity"),
+          File.expand_path("~/.ssh/id_ecdsa"),
         ].find { |path| File.exist?(path) }
       end
 
       default_config :public_key_path do |driver|
-        if driver[:private_key_path] and File.exist?(driver[:private_key_path] + '.pub')
-          driver[:private_key_path] + '.pub'
+        if driver[:private_key_path] && File.exist?(driver[:private_key_path] + ".pub")
+          driver[:private_key_path] + ".pub"
         end
       end
 
-      default_config :linode_token, ENV['LINODE_TOKEN']
+      default_config :linode_token, ENV["LINODE_TOKEN"]
 
       required_config :linode_token
 
@@ -85,7 +86,7 @@ module Kitchen
                                        Excon::Error::RequestTimeout,
                                        Excon::Error::TooManyRequests]
           retry_config.tries        = config[:api_retries]
-          retry_config.sleep        = lambda { |n| 2**n }  # sleep 1, 2, 4, etc. each try
+          retry_config.sleep        = lambda { |n| 2**n } # sleep 1, 2, 4, etc. each try
         end
       end
 
@@ -104,7 +105,7 @@ module Kitchen
         update_state(state, server)
         info("Linode <#{state[:linode_id]}, #{state[:linode_label]}> created.")
         info("Waiting for linode to boot...")
-        server.wait_for { server.status == 'running' }
+        server.wait_for { server.status == "running" }
         instance.transport.connection(state).wait_until_ready
         info("Linode <#{state[:linode_id]}, #{state[:linode_label]}> ready.")
         setup_server(state) if bourne_shell?
@@ -115,6 +116,7 @@ module Kitchen
 
       def destroy(state)
         return if state[:linode_id].nil?
+
         begin
           Retryable.retryable do
             server = compute.servers.get(state[:linode_id])
@@ -138,27 +140,23 @@ module Kitchen
       def get_region
         region = nil
         Retryable.retryable do
-          region = compute.regions.find { |region| region.id == config[:region] }
+          region = compute.regions.find { |x| x.id == config[:region] }
         end
+        raise(UserError, "No match for region: #{config[:region]}") if region.nil?
 
-        if region.nil?
-          fail(UserError, "No match for region: #{config[:region]}")
-        end
         info "Got region: #{region.id}..."
-        return region.id
+        region.id
       end
 
       def get_type
         type = nil
         Retryable.retryable do
-          type = compute.types.find { |type| type.id == config[:type] }
+          type = compute.types.find { |x| x.id == config[:type] }
         end
+        raise(UserError, "No match for type: #{config[:type]}") if type.nil?
 
-        if type.nil?
-          fail(UserError, "No match for type: #{config[:type]}")
-        end
         info "Got type: #{type.id}..."
-        return type.id
+        type.id
       end
 
       def get_image
@@ -169,27 +167,23 @@ module Kitchen
         end
         image = nil
         Retryable.retryable do
-          image = compute.images.find { |image| image.id == image_id }
+          image = compute.images.find { |x| x.id == image_id }
         end
+        raise(UserError, "No match for image: #{config[:image]}") if image.nil?
 
-        if image.nil?
-          fail(UserError, "No match for image: #{config[:image]}")
-        end
         info "Got image: #{image.id}..."
-        return image.id
+        image.id
       end
 
       def get_kernel
         kernel = nil
         Retryable.retryable do
-          kernel = compute.kernels.find { |kernel| kernel.id == config[:kernel] }
+          kernel = compute.kernels.find { |x| x.id == config[:kernel] }
         end
+        raise(UserError, "No match for kernel: #{config[:kernel]}") if kernel.nil?
 
-        if kernel.nil?
-          fail(UserError, "No match for kernel: #{config[:kernel]}")
-        end
         info "Got kernel: #{kernel.id}..."
-        return kernel.id
+        kernel.id
       end
 
       # generate a unique label
@@ -197,8 +191,8 @@ module Kitchen
         # Try to generate a unique suffix and make sure nothing else on the account
         # has the same label.
         # The iterator is a randomized list from 0 to 999.
-        for suffix in (0..999).to_a.sample(1000)
-          label = "#{config[:label]}_#{'%03d' % suffix}"
+        (0..999).to_a.sample(1000).each do |suffix|
+          label = "#{config[:label]}_#{"%03d" % suffix}"
           Retryable.retryable do
             if compute.servers.find { |server| server.label == label }.nil?
               return label
@@ -210,8 +204,9 @@ module Kitchen
         # account.
         error(
           "Unable to generate a unique label with prefix #{config[:label]}. " \
-          "Might need to cleanup your account.")
-        fail(UserError, "Unable to generate a unique label.")
+          "Might need to cleanup your account."
+        )
+        raise(UserError, "Unable to generate a unique label.")
       end
 
       def create_server
@@ -222,10 +217,11 @@ module Kitchen
         authorized_keys = config[:public_key_path] ? [open(config[:public_key_path]).read.strip] : []
         # callback to check if we can retry
         create_exception_callback = lambda do |exception|
-          if not exception.response.body.include? "Label must be unique"
+          unless exception.response.body.include? "Label must be unique"
             # we want to float this to the user instead of retrying
             raise exception
           end
+
           info("Got [#{exception.class}] due to non-unique label when creating server.")
           info("Will try again with a new label if we can.")
         end
@@ -243,15 +239,15 @@ module Kitchen
           info("Creating Linode - #{label}")
           Retryable.retryable do
             compute.servers.create(
-              :region => region,
-              :type => type,
-              :label => label,
-              :tags => config[:tags],
-              :image => image,
-              :kernel => kernel,
-              :root_pass => config[:password],
-              :authorized_keys => authorized_keys,
-              :authorized_users => config[:authorized_users]
+              region: region,
+              type: type,
+              label: label,
+              tags: config[:tags],
+              image: image,
+              kernel: kernel,
+              root_pass: config[:password],
+              authorized_keys: authorized_keys,
+              authorized_users: config[:authorized_users]
             )
           end
         end
@@ -259,19 +255,23 @@ module Kitchen
 
       def setup_server(state)
         info "Setting hostname..."
-        shortname = "#{config[:hostname].split('.')[0]}"
+        shortname = "#{config[:hostname].split(".")[0]}"
         hostsfile = "127.0.0.1 #{config[:hostname]} #{shortname} " \
         "localhost\n::1 #{config[:hostname]} #{shortname} localhost"
         instance.transport.connection(state).execute(
             "echo '#{hostsfile}' > /etc/hosts &&" \
             "hostnamectl set-hostname #{config[:hostname]}"
           )
-        if config[:private_key_path] and config[:public_key_path] and config[:disable_password]
+        if config[:private_key_path] && config[:public_key_path] && config[:disable_ssh_password]
           info "Disabling SSH password login..."
+          # Disable password auth and bounce SSH
           instance.transport.connection(state).execute(
-            "sed -i 's/^PasswordAuthentication .*$/PasswordAuthentication no/' /etc/ssh/sshd_config &&" \
-            "systemctl restart ssh || systemctl restart sshd || service sshd restart ||" \
-            "rc-service sshd restart || /etc/rc.d/rc.sshd restart || /etc/init.d/sshd restart"
+            "sed -i 's/^PasswordAuthentication .*$/PasswordAuthentication no/' /etc/ssh/sshd_config &&" +
+            "systemctl restart ssh &> /dev/null || " +      # Ubuntu, Debian, most systemd distros
+            "systemctl restart sshd &> /dev/null || " +     # CentOS 7+
+            "/etc/init.d/sshd restart &> /dev/null || " +   # OpenRC (Gentoo, Alpine) and sysvinit
+            "/etc/init.d/ssh restart &> /dev/null || " +    # Other OpenRC and sysvinit distros
+            "/etc/rc.d/rc.sshd restart &> /dev/null"        # Slackware
           )
         end
         info "Done setting up server."
@@ -279,13 +279,14 @@ module Kitchen
 
       # Set the proper server name in the config
       def config_label
-        if not config[:label]
-          jobname = ENV["JOB_NAME"] || ENV["GITHUB_JOB"] || File.basename(config[:kitchen_root])
-          config[:label] = "kitchen-#{jobname}-#{instance.name}".tr(" /", "_")
+        unless config[:label]
+          basename = config[:kitchen_root] ? File.basename(config[:kitchen_root]) : "job"
+          jobname = ENV["JOB_NAME"] || ENV["GITHUB_JOB"] || basename
+          config[:label] = "kitchen-#{jobname}-#{instance.name}"
         end
         # cut to fit Linode 64 character maximum
         # we trim to 60 so we can add '_' with a random 3 digit suffix later
-        if config[:label].size >= 60
+        if config[:label].tr(" /", "_").size >= 60
           config[:label] = "#{config[:label][0..59]}"
         end
       end
@@ -305,7 +306,7 @@ module Kitchen
         state[:linode_id] = server.id
         state[:linode_label] = server.label
         state[:hostname] = server.ipv4[0]
-        if config[:private_key_path] and config[:public_key_path]
+        if config[:private_key_path] && config[:public_key_path]
           state[:ssh_key] = config[:private_key_path]
         else
           warn "Using SSH password auth, some things may not work."
