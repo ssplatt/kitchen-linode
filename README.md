@@ -33,22 +33,22 @@ Please read the [Driver usage][driver_usage] page for more details.
 
 For many of these, you can specify an ID number, a full name, or a partial name that will try to match something in the list but may not match exactly what you want.
 
-| Option | EnvVar | Default | Required | Description |
-|-|-|-|-|-|
-| `linode_token` | `LINODE_TOKEN` | none | `true` | Linode API token. |
-| `password` | `LINODE_PASSWORD` | Random UUID | `false` | Password for root. |
-| `label` | none | Auto generated | `false` | Label for the server. |
-| `tags` | none | `["kitchen"]` | `false` | List of tags to set on the server. |
-| `hostname` | none | Label if provided, else kitchen instance name | `false` | The hostname of the server. |
-| `image` | none | Kitchen platform name | `false` | Linode image. |
-| `region` | `LINODE_REGION` | `us-east` | `false` | Linode region. |
-| `type` | none | `g6-nanode-1` | `false` | Linode type. |
-| `kernel` | none | `linode/grub2` | `false` | Linode Kernel. |
-| `api_retries` | none | `5` | `false` | How many times to retry API calls on timeouts or rate limits. |
-| `authorized_users` | `LINODE_AUTH_USERS` | `[]` | `false` | List of authorized Linode users for seeding SSH keys. Environment variable should be a comma separated list of usernames. |
-| `private_key_path` | none | `~/.ssh/id_rsa`, `~/.ssh/id_dsa`, `~/.ssh/identity`, or `~/.ssh/id_ecdsa`, whichever first exists. | `false` | Path to SSH private key that should be used to connect to the server. |
-| `public_key_path` | none | Auto inferred based on the `private_key_path` | `false` | Path to SSH public key that should be installed on the server. |
-| `disable_ssh_password` | none | `true` | `false` | When set to `true` and SSH keys are provided password auth for SSH is disabled. |
+| Option | EnvVar | Default | Description |
+|-|-|-|-|
+| `linode_token` | `LINODE_TOKEN` | none | Linode API token. Required. |
+| `password` | `LINODE_PASSWORD` | Random UUID | Password for root. |
+| `label` | none | Auto generated | Label for the server. |
+| `tags` | none | `["kitchen"]` | List of tags to set on the server. |
+| `hostname` | none | Label if provided, else kitchen instance name | The hostname of the server. |
+| `image` | none | Kitchen platform name | Linode image. |
+| `region` | `LINODE_REGION` | `us-east` | Linode region. |
+| `type` | none | `g6-nanode-1` | Linode type. |
+| `kernel` | none | `linode/grub2` | Linode Kernel. |
+| `api_retries` | none | `5` | How many times to retry API calls on timeouts or rate limits. |
+| `authorized_users` | `LINODE_AUTH_USERS` | `[]` | List of authorized Linode users for seeding SSH keys. Environment variable should be a comma separated list of usernames. |
+| `private_key_path` | none | `~/.ssh/id_rsa`, `~/.ssh/id_dsa`, `~/.ssh/identity`, or `~/.ssh/id_ecdsa`, whichever first exists. | Path to SSH private key that should be used to connect to the server. |
+| `public_key_path` | none | Auto inferred based on the `private_key_path` | Path to SSH public key that should be installed on the server. |
+| `disable_ssh_password` | none | `true` | When set to `true` and SSH keys are provided password auth for SSH is disabled. |
 
 ## Usage
 
