@@ -1,4 +1,4 @@
-# <a name="title"></a> Kitchen::Linode
+# Kitchen::Linode
 [![Gem](https://img.shields.io/gem/v/kitchen-linode.svg)](https://rubygems.org/gems/kitchen-linode)
 [![Gem](https://img.shields.io/gem/dt/kitchen-linode.svg)](https://rubygems.org/gems/kitchen-linode)
 [![Gem](https://img.shields.io/gem/dtv/kitchen-linode.svg)](https://rubygems.org/gems/kitchen-linode)
@@ -10,7 +10,7 @@ A Test Kitchen Driver for [Linode](http://www.linode.com).
 
 [![asciicast](https://asciinema.org/a/44348.png)](https://asciinema.org/a/44348)
 
-## <a name="requirements"></a> Requirements
+## Requirements
 
 Requires [Test Kitchen](https://kitchen.ci/) and a [Linode](http://www.linode.com) account.
 
@@ -18,7 +18,7 @@ Requires [Test Kitchen](https://kitchen.ci/) and a [Linode](http://www.linode.co
 gem install test-kitchen
 ```
 
-## <a name="installation"></a> Installation and Setup
+## Installation and Setup
 
 The gem file is hosted at [RubyGems](https://rubygems.org/gems/kitchen-linode). To install the gem file, run:
 
@@ -29,28 +29,28 @@ gem install kitchen-linode
 Or, install with bundler if you have a Gemfile
 Please read the [Driver usage][driver_usage] page for more details.
 
-## <a name="config"></a> Configuration
+## Configuration
 
 For many of these, you can specify an ID number, a full name, or a partial name that will try to match something in the list but may not match exactly what you want.
 
-```
-LINODE_TOKEN        Linode API token environment variable, default: nil
-:username           ssh user name, default: "root"
-:password           password for user, default: randomly generated hash
-:image              image, default: nil
-:region             region, default: "us-east"
-:type               linode type, default: "g6-nanode-1"
-:kernel             Linux kernel, default: "linode/grub2"
-:private_key_path   Location of your private key file, default: "~/.ssh/id_rsa"
-:public_key_path    Location of your public key file, default: "~/.ssh/id_rsa.pub"
-:ssh_timeout        ssh timeout, default: 600 (seconds)
-:sudo               use sudo, default: True
-:port               ssh port, default: 22
-:label              set the hostname and linode label
-:api_retries        how many times to retry API calls on timeouts or rate limits, default: 5
-```
+| Option | EnvVar | Default | Required | Description |
+|-|-|-|-|-|
+| `linode_token` | `LINODE_TOKEN` | none | `true` | Linode API token. |
+| `password` | `LINODE_PASSWORD` | Random UUID | `false` | Password for root. |
+| `label` | none | Auto generated | `false` | Label for the server. |
+| `tags` | none | `["kitchen"]` | `false` | List of tags to set on the server. |
+| `hostname` | none | Label if provided, else kitchen instance name | `false` | The hostname of the server. |
+| `image` | none | Kitchen platform name | `false` | Linode image. |
+| `region` | `LINODE_REGION` | `us-east` | `false` | Linode region. |
+| `type` | none | `g6-nanode-1` | `false` | Linode type. |
+| `kernel` | none | `linode/grub2` | `false` | Linode Kernel. |
+| `api_retries` | none | `5` | `false` | How many times to retry API calls on timeouts or rate limits. |
+| `authorized_users` | `LINODE_AUTH_USERS` | `[]` | `false` | List of authorized Linode users for seeding SSH keys. Environment variable should be a comma separated list of usernames. |
+| `private_key_path` | none | `~/.ssh/id_rsa`, `~/.ssh/id_dsa`, `~/.ssh/identity`, or `~/.ssh/id_ecdsa`, whichever first exists. | `false` | Path to SSH private key that should be used to connect to the server. |
+| `public_key_path` | none | Auto inferred based on the `private_key_path` | `false` | Path to SSH public key that should be installed on the server. |
+| `disable_ssh_password` | none | `true` | `false` | When set to `true` and SSH keys are provided password auth for SSH is disabled. |
 
-## <a name="usage"></a> Usage
+## Usage
 
 First, set your Linode API token in an environment variable:
 
@@ -128,7 +128,7 @@ platforms:
 # ...<snip>...
 ```
 
-## <a name="development"></a> Development
+## Development
 
 * Source hosted at [GitHub][repo]
 * Report issues/questions/feature requests on [GitHub Issues][issues]
@@ -143,11 +143,11 @@ example:
 4. Push to the branch (`git push origin my-new-feature`)
 5. Create new Pull Request
 
-## <a name="authors"></a> Authors
+## Authors
 
 Created and maintained by [Brett Taylor][author] (<btaylor@linode.com>)
 
-## <a name="license"></a> License
+## License
 
 Apache 2.0 (see [LICENSE][license])
 

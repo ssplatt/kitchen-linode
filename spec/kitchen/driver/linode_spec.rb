@@ -87,30 +87,29 @@ describe Kitchen::Driver::Linode do
 
     end
     context "overridden options" do
-      let(:config) do
-        {
-          image: "linode/ubuntu20.04",
-          region: "eu-central",
-          type: "g6-standard-2",
-          kernel: "linode/grub2",
-          username: "someuser",
-          label: "thisserver",
-          private_key_path: "/path/to/id_rsa",
-          public_key_path: "/path/to/id_rsa.pub",
-          password: "somepassword",
-          api_retries: 2,
-        }
-      end
+      config = {
+        linode_token: "mytesttoken",
+        password: "somepassword",
+        label: "thisserver",
+        tags: %w{kitchen deleteme},
+        hostname: "clevername",
+        image: "linode/ubuntu20.04",
+        region: "eu-central",
+        type: "g6-standard-2",
+        kernel: "linode/grub2",
+        api_retries: 2,
+        authorized_users: ["timmy"],
+        private_key_path: "/path/to/id_rsa",
+        public_key_path: "/path/to/id_rsa.pub",
+        disable_ssh_password: false,
+      }
 
-      it "uses all the overridden options" do
-        drv = driver
-        config.each do |k, v|
-          expect(drv[k]).to eq(v)
+      let(:config) { config }
+
+      config.each do |key, value|
+        it "it uses the overridden #{key} option" do
+          expect(driver[key]).to eq(value)
         end
-      end
-
-      it "overrides server name prefix with explicit server name, if given" do
-        expect(driver[:label]).to eq(config[:label])
       end
     end
   end
@@ -137,9 +136,7 @@ describe Kitchen::Driver::Linode do
     context "required options provided" do
       let(:config) do
         {
-          username: "someuser",
           linode_token: "somekey",
-          disable_ssl_validation: false,
         }
       end
       let(:server) do

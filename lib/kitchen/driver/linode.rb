@@ -31,20 +31,25 @@ module Kitchen
       kitchen_driver_api_version 2
       plugin_version Kitchen::Driver::LINODE_VERSION
 
-      default_config :password do
-        SecureRandom.uuid
+      default_config :linode_token do
+        ENV["LINODE_TOKEN"]
       end
-      default_config :disable_ssh_password, true
+      default_config :password do
+        ENV["LINODE_PASSWORD"] || SecureRandom.uuid
+      end
       default_config :label, nil
       default_config :tags, ["kitchen"]
       default_config :hostname, nil
       default_config :image, nil
-      default_config :region, ENV["LINODE_REGION"] || "us-east"
+      default_config :region do
+        ENV["LINODE_REGION"] || "us-east"
+      end
       default_config :type, "g6-nanode-1"
       default_config :kernel, "linode/grub2"
       default_config :api_retries, 5
-      default_config :authorized_users, ENV["LINODE_AUTH_USERS"].to_s.split(",")
-
+      default_config :authorized_users do
+        ENV["LINODE_AUTH_USERS"].to_s.split(",")
+      end
       default_config :private_key_path do
         [
           File.expand_path("~/.ssh/id_rsa"),
@@ -53,14 +58,12 @@ module Kitchen
           File.expand_path("~/.ssh/id_ecdsa"),
         ].find { |path| File.exist?(path) }
       end
-
       default_config :public_key_path do |driver|
         if driver[:private_key_path] && File.exist?(driver[:private_key_path] + ".pub")
           driver[:private_key_path] + ".pub"
         end
       end
-
-      default_config :linode_token, ENV["LINODE_TOKEN"]
+      default_config :disable_ssh_password, true
 
       required_config :linode_token
 
