@@ -18,6 +18,7 @@
 require "securerandom" unless defined?(SecureRandom)
 require "kitchen"
 require "fog/linode"
+require "fog/json"
 require "retryable" unless defined?(Retryable)
 require_relative "linode_version"
 
@@ -45,8 +46,10 @@ module Kitchen
         ENV["LINODE_REGION"] || "us-east"
       end
       default_config :type, "g6-nanode-1"
-      default_config :kernel, "linode/grub2"
-      default_config :api_retries, 5
+      default_config :stackscript_id, nil
+      default_config :stackscript_data, nil
+      default_config :swap_size, nil
+      default_config :private_ip, false
       default_config :authorized_users do
         ENV["LINODE_AUTH_USERS"].to_s.split(",")
       end
@@ -64,27 +67,16 @@ module Kitchen
         end
       end
       default_config :disable_ssh_password, true
+      default_config :api_retries, 5
 
       required_config :linode_token
 
       def initialize(config)
         super
-        # callback to check if we can retry
-        retry_exception_callback = lambda do |exception|
-          if exception.class == Excon::Error::TooManyRequests
-            # add a random value between 2 and 20 to the sleep to splay retries
-            sleep_time = exception.response.headers["Retry-After"].to_i + rand(2..20)
-            warn("Rate limit encountered, sleeping #{sleep_time} seconds for it to expire.")
-            sleep(sleep_time)
-          end
-        end
-        log_method = lambda do |retries, exception|
-          warn("[Attempt ##{retries}] Retrying because [#{exception.class}]")
-        end
         # configure to retry on timeouts and rate limits by default
         Retryable.configure do |retry_config|
-          retry_config.log_method   = log_method
-          retry_config.exception_cb = retry_exception_callback
+          retry_config.log_method   = method(:retry_log_method)
+          retry_config.exception_cb = method(:retry_exception_callback)
           retry_config.on           = [Excon::Error::Timeout,
                                        Excon::Error::RequestTimeout,
                                        Excon::Error::TooManyRequests]
@@ -93,8 +85,8 @@ module Kitchen
         end
       end
 
+      # create and boot server
       def create(state)
-        # create and boot server
         if state[:linode_id]
           info "Linode <#{state[:linode_id]}, #{state[:linode_label]}> already exists."
           return
@@ -104,16 +96,15 @@ module Kitchen
         config_label
         server = create_server
 
-        # assign the machine id for reference in other commands
         update_state(state, server)
-        info("Linode <#{state[:linode_id]}, #{state[:linode_label]}> created.")
-        info("Waiting for linode to boot...")
+        info "Linode <#{state[:linode_id]}, #{state[:linode_label]}> created."
+        info "Waiting for linode to boot..."
         server.wait_for { server.status == "running" }
         instance.transport.connection(state).wait_until_ready
-        info("Linode <#{state[:linode_id]}, #{state[:linode_label]}> ready.")
+        info "Linode <#{state[:linode_id]}, #{state[:linode_label]}> ready."
         setup_server(state) if bourne_shell?
       rescue Fog::Errors::Error, Excon::Errors::Error => ex
-        error("Failed to create server: #{ex.class} - #{ex.message}")
+        error "Failed to create server: #{ex.class} - #{ex.message}"
         raise ActionFailed, ex.message
       end
 
@@ -125,9 +116,9 @@ module Kitchen
             server = compute.servers.get(state[:linode_id])
             server.destroy
           end
-          info("Linode <#{state[:linode_id]}, #{state[:linode_label]}> destroyed.")
+          info "Linode <#{state[:linode_id]}, #{state[:linode_label]}> destroyed."
         rescue Excon::Error::NotFound
-          info("Linode <#{state[:linode_id]}, #{state[:linode_label]}> not found.")
+          info "Linode <#{state[:linode_id]}, #{state[:linode_label]}> not found."
         end
         state.delete(:linode_id)
         state.delete(:linode_label)
@@ -138,55 +129,6 @@ module Kitchen
 
       def compute
         Fog::Compute.new(provider: :linode, linode_token: config[:linode_token])
-      end
-
-      def get_region
-        region = nil
-        Retryable.retryable do
-          region = compute.regions.find { |x| x.id == config[:region] }
-        end
-        raise(UserError, "No match for region: #{config[:region]}") if region.nil?
-
-        info "Got region: #{region.id}..."
-        region.id
-      end
-
-      def get_type
-        type = nil
-        Retryable.retryable do
-          type = compute.types.find { |x| x.id == config[:type] }
-        end
-        raise(UserError, "No match for type: #{config[:type]}") if type.nil?
-
-        info "Got type: #{type.id}..."
-        type.id
-      end
-
-      def get_image
-        if config[:image].nil?
-          image_id = instance.platform.name
-        else
-          image_id = config[:image]
-        end
-        image = nil
-        Retryable.retryable do
-          image = compute.images.find { |x| x.id == image_id }
-        end
-        raise(UserError, "No match for image: #{config[:image]}") if image.nil?
-
-        info "Got image: #{image.id}..."
-        image.id
-      end
-
-      def get_kernel
-        kernel = nil
-        Retryable.retryable do
-          kernel = compute.kernels.find { |x| x.id == config[:kernel] }
-        end
-        raise(UserError, "No match for kernel: #{config[:kernel]}") if kernel.nil?
-
-        info "Got kernel: #{kernel.id}..."
-        kernel.id
       end
 
       # generate a unique label
@@ -203,98 +145,92 @@ module Kitchen
           end
         end
         # If we're here that means we couldn't make a unique label with the
-        # given prefix. Yell at the user that they need to clean up their
+        # given prefix. Inform the user that they need to clean up their
         # account.
-        error(
-          "Unable to generate a unique label with prefix #{config[:label]}. " \
-          "Might need to cleanup your account."
-        )
+        error "Unable to generate a unique label with prefix #{config[:label]}."
+        error "Might need to cleanup your account."
         raise(UserError, "Unable to generate a unique label.")
       end
 
       def create_server
-        region = get_region
-        type = get_type
-        image = get_image
-        kernel = get_kernel
-        authorized_keys = config[:public_key_path] ? [open(config[:public_key_path]).read.strip] : []
-        # callback to check if we can retry
-        create_exception_callback = lambda do |exception|
-          unless exception.response.body.include? "Label must be unique"
-            # we want to float this to the user instead of retrying
-            raise exception
-          end
-
-          info("Got [#{exception.class}] due to non-unique label when creating server.")
-          info("Will try again with a new label if we can.")
-        end
         # submit new linode request
         Retryable.retryable(
           on: [Excon::Error::BadRequest],
           tries: config[:api_retries],
-          exception_cb: create_exception_callback,
+          exception_cb: method(:create_server_exception_callback),
           log_method: proc {}
         ) do
           # This will retry if we get a response that the label must be
           # unique. We wrap both of these in a retry so we generate a
           # new label when we try again.
           label = generate_unique_label
-          info("Creating Linode - #{label}")
+          info "Creating Linode:"
+          info "  label:  #{label}"
+          info "  region: #{config[:region]}"
+          info "  image: #{config[:image]}"
+          info "  type: #{config[:type]}"
+          info "  tags: #{config[:tags]}"
           Retryable.retryable do
             compute.servers.create(
-              region: region,
-              type: type,
               label: label,
+              region: config[:region],
+              image: config[:image] || instance.platform.name,
+              type: config[:type],
               tags: config[:tags],
-              image: image,
-              kernel: kernel,
+              stackscript_id: config[:stackscript_id],
+              stackscript_data: config[:stackscript_data],
+              swap_size: config[:swap_size],
+              private_ip: config[:private_ip],
               root_pass: config[:password],
-              authorized_keys: authorized_keys,
+              authorized_keys: config[:public_key_path] ? [open(config[:public_key_path]).read.strip] : [],
               authorized_users: config[:authorized_users]
             )
           end
         end
       end
 
+      # post build server setup, including configuring the hostname
       def setup_server(state)
         info "Setting hostname..."
         shortname = "#{config[:hostname].split(".")[0]}"
-        hostsfile = "127.0.0.1 #{config[:hostname]} #{shortname} " \
-        "localhost\n::1 #{config[:hostname]} #{shortname} localhost"
         instance.transport.connection(state).execute(
-            "echo '#{hostsfile}' > /etc/hosts &&" \
-            "hostnamectl set-hostname #{config[:hostname]}"
-          )
+          "echo '127.0.0.1 #{config[:hostname]} #{shortname} localhost\n" +
+          "::1 #{config[:hostname]} #{shortname} localhost' > /etc/hosts && " +
+          "hostnamectl set-hostname #{config[:hostname]} || " + # Systemd distros
+          "hostname #{config[:hostname]}"                       # Others
+        )
         if config[:private_key_path] && config[:public_key_path] && config[:disable_ssh_password]
-          info "Disabling SSH password login..."
           # Disable password auth and bounce SSH
+          info "Disabling SSH password login..."
           instance.transport.connection(state).execute(
             "sed -i 's/^PasswordAuthentication .*$/PasswordAuthentication no/' /etc/ssh/sshd_config &&" +
-            "systemctl restart ssh &> /dev/null || " +      # Ubuntu, Debian, most systemd distros
-            "systemctl restart sshd &> /dev/null || " +     # CentOS 7+
-            "/etc/init.d/sshd restart &> /dev/null || " +   # OpenRC (Gentoo, Alpine) and sysvinit
-            "/etc/init.d/ssh restart &> /dev/null || " +    # Other OpenRC and sysvinit distros
-            "/etc/rc.d/rc.sshd restart &> /dev/null"        # Slackware
+            "systemctl restart ssh &> /dev/null || " +    # Ubuntu, Debian, most systemd distros
+            "systemctl restart sshd &> /dev/null || " +   # CentOS 7+
+            "/etc/init.d/sshd restart &> /dev/null || " + # OpenRC (Gentoo, Alpine) and sysvinit
+            "/etc/init.d/ssh restart &> /dev/null || " +  # Other OpenRC and sysvinit distros
+            "/etc/rc.d/rc.sshd restart &> /dev/null"      # Slackware
           )
         end
         info "Done setting up server."
       end
 
-      # Set the proper server name in the config
+      # generate a label prefix if none is supplied and ensure it's less than
+      # the character limit.
       def config_label
         unless config[:label]
           basename = config[:kitchen_root] ? File.basename(config[:kitchen_root]) : "job"
           jobname = ENV["JOB_NAME"] || ENV["GITHUB_JOB"] || basename
           config[:label] = "kitchen-#{jobname}-#{instance.name}"
         end
+        config[:label] = config[:label].tr(" /", "_")
         # cut to fit Linode 64 character maximum
         # we trim to 60 so we can add '_' with a random 3 digit suffix later
-        if config[:label].tr(" /", "_").size >= 60
+        if config[:label].size >= 60
           config[:label] = "#{config[:label][0..59]}"
         end
       end
 
-      # Set the proper server hostname
+      # configure the hostname either by the provided label or the instance name
       def config_hostname
         if config[:hostname].nil?
           if config[:label]
@@ -305,6 +241,7 @@ module Kitchen
         end
       end
 
+      # update the kitchen state with the returned server
       def update_state(state, server)
         state[:linode_id] = server.id
         state[:linode_label] = server.label
@@ -315,6 +252,45 @@ module Kitchen
           warn "Using SSH password auth, some things may not work."
           state[:password] = config[:password]
         end
+      end
+
+      # retry exception callback to check if we need to wait for a rate limit
+      def retry_exception_callback(exception)
+        if exception.class == Excon::Error::TooManyRequests
+          # add a random value between 2 and 20 to the sleep to splay retries
+          sleep_time = exception.response.headers["Retry-After"].to_i + rand(2..20)
+          warn "Rate limit encountered, sleeping #{sleep_time} seconds for it to expire."
+          sleep(sleep_time)
+        end
+      end
+
+      # retry logging callback to print a message when we're retrying a request
+      def retry_log_method(retries, exception)
+        warn "[Attempt ##{retries}] Retrying because [#{exception.class}]"
+      end
+
+      # create_server callback to check if we can retry the request
+      def create_server_exception_callback(exception)
+        unless exception.response.body.include? "Label must be unique"
+          # not a retriable error.
+          # decode our error(s) and print for the user, then raise a UserError.
+          begin
+            resp_errors = Fog::JSON.decode(exception.response.body)["errors"]
+            resp_errors.each do |resp_error|
+              error "error:"
+              resp_error.each do |key, value|
+                error "  #{key}: #{value}"
+              end
+            end
+          rescue
+            # something went wrong with decoding and pretty-printing the error
+            # just raise the original exception.
+            raise exception
+          end
+          raise(UserError, "Bad request when creating server.")
+        end
+        info "Got [#{exception.class}] due to non-unique label when creating server."
+        info "Will try again with a new label if we can."
       end
     end
   end
