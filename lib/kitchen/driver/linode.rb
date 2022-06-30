@@ -54,18 +54,20 @@ module Kitchen
         ENV["LINODE_AUTH_USERS"].to_s.split(",")
       end
       default_config :private_key_path do
-        [
+        ENV["LINODE_PRIVATE_KEY"] || [
           File.expand_path("~/.ssh/id_rsa"),
           File.expand_path("~/.ssh/id_dsa"),
           File.expand_path("~/.ssh/identity"),
           File.expand_path("~/.ssh/id_ecdsa"),
         ].find { |path| File.exist?(path) }
       end
+      expand_path_for :private_key_path
       default_config :public_key_path do |driver|
         if driver[:private_key_path] && File.exist?(driver[:private_key_path] + ".pub")
           driver[:private_key_path] + ".pub"
         end
       end
+      expand_path_for :public_key_path
       default_config :disable_ssh_password, true
       default_config :api_retries, 5
 
@@ -87,10 +89,7 @@ module Kitchen
 
       # create and boot server
       def create(state)
-        if state[:linode_id]
-          info "Linode <#{state[:linode_id]}, #{state[:linode_label]}> already exists."
-          return
-        end
+        return if state[:linode_id]
 
         config_hostname
         config_label
@@ -139,9 +138,7 @@ module Kitchen
         (0..999).to_a.sample(1000).each do |suffix|
           label = "#{config[:label]}_#{"%03d" % suffix}"
           Retryable.retryable do
-            if compute.servers.find { |server| server.label == label }.nil?
-              return label
-            end
+            return label if compute.servers.find { |server| server.label == label }.nil?
           end
         end
         # If we're here that means we couldn't make a unique label with the
@@ -164,17 +161,21 @@ module Kitchen
           # unique. We wrap both of these in a retry so we generate a
           # new label when we try again.
           label = generate_unique_label
+          image = config[:image] || instance.platform.name
           info "Creating Linode:"
           info "  label:  #{label}"
           info "  region: #{config[:region]}"
-          info "  image: #{config[:image]}"
+          info "  image: #{image}"
           info "  type: #{config[:type]}"
           info "  tags: #{config[:tags]}"
+          info "  swap_size: #{config[:swap_size]}" if config[:swap_size]
+          info "  private_ip: #{config[:private_ip]}" if config[:private_ip]
+          info "  stackscript_id: #{config[:stackscript_id]}" if config[:stackscript_id]
           Retryable.retryable do
             compute.servers.create(
               label: label,
               region: config[:region],
-              image: config[:image] || instance.platform.name,
+              image: image,
               type: config[:type],
               tags: config[:tags],
               stackscript_id: config[:stackscript_id],
@@ -196,19 +197,20 @@ module Kitchen
         instance.transport.connection(state).execute(
           "echo '127.0.0.1 #{config[:hostname]} #{shortname} localhost\n" +
           "::1 #{config[:hostname]} #{shortname} localhost' > /etc/hosts && " +
-          "hostnamectl set-hostname #{config[:hostname]} || " + # Systemd distros
-          "hostname #{config[:hostname]}"                       # Others
+          "hostnamectl set-hostname #{config[:hostname]} &> /dev/null || " +
+          "hostname #{config[:hostname]} &> /dev/null"
         )
         if config[:private_key_path] && config[:public_key_path] && config[:disable_ssh_password]
           # Disable password auth and bounce SSH
           info "Disabling SSH password login..."
           instance.transport.connection(state).execute(
-            "sed -i 's/^PasswordAuthentication .*$/PasswordAuthentication no/' /etc/ssh/sshd_config &&" +
-            "systemctl restart ssh &> /dev/null || " +    # Ubuntu, Debian, most systemd distros
-            "systemctl restart sshd &> /dev/null || " +   # CentOS 7+
-            "/etc/init.d/sshd restart &> /dev/null || " + # OpenRC (Gentoo, Alpine) and sysvinit
-            "/etc/init.d/ssh restart &> /dev/null || " +  # Other OpenRC and sysvinit distros
-            "/etc/rc.d/rc.sshd restart &> /dev/null"      # Slackware
+            "sed -ri 's/^#?PasswordAuthentication .*$/PasswordAuthentication no/' /etc/ssh/sshd_config &&" +
+            "systemctl restart ssh &> /dev/null || " +     # Ubuntu, Debian, most systemd distros
+            "systemctl restart sshd &> /dev/null || " +    # CentOS 7+
+            "/etc/init.d/sshd restart &> /dev/null || " +  # OpenRC (Gentoo, Alpine) and sysvinit
+            "/etc/init.d/ssh restart &> /dev/null || " +   # Other OpenRC and sysvinit distros
+            "/etc/rc.d/rc.sshd restart &> /dev/null && " + # Slackware
+            "sleep 1" # Sleep because Slackware's rc script doesn't start SSH back up without it
           )
         end
         info "Done setting up server."

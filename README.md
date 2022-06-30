@@ -33,7 +33,7 @@ Please read the [Driver usage][driver_usage] page for more details.
 
 For many of these, you can specify an ID number, a full name, or a partial name that will try to match something in the list but may not match exactly what you want.
 
-| Option | EnvVar | Default | Description |
+| Option | Env Var | Default | Description |
 |-|-|-|-|
 | `linode_token` | `LINODE_TOKEN` | none | Linode API token. Required. |
 | `password` | `LINODE_PASSWORD` | Random UUID | Password for root. |
@@ -43,12 +43,15 @@ For many of these, you can specify an ID number, a full name, or a partial name 
 | `image` | none | Kitchen platform name | Linode image. |
 | `region` | `LINODE_REGION` | `us-east` | Linode region. |
 | `type` | none | `g6-nanode-1` | Linode type. |
-| `kernel` | none | `linode/grub2` | Linode Kernel. |
-| `api_retries` | none | `5` | How many times to retry API calls on timeouts or rate limits. |
+| `stackscript_id` | none | none | StackScript ID to provision the server with. |
+| `stackscript_data` | none | none | StackScript data for user defined fields. |
+| `swap_size` | none | none | Swap size in MB. |
+| `private_ip` | none | `false` | Set to true to add a private IP to the server. |
 | `authorized_users` | `LINODE_AUTH_USERS` | `[]` | List of authorized Linode users for seeding SSH keys. Environment variable should be a comma separated list of usernames. |
-| `private_key_path` | none | `~/.ssh/id_rsa`, `~/.ssh/id_dsa`, `~/.ssh/identity`, or `~/.ssh/id_ecdsa`, whichever first exists. | Path to SSH private key that should be used to connect to the server. |
+| `private_key_path` | `LINODE_PRIVATE_KEY` | `~/.ssh/id_rsa`, `~/.ssh/id_dsa`, `~/.ssh/identity`, or `~/.ssh/id_ecdsa`, whichever first exists. | Path to SSH private key that should be used to connect to the server. |
 | `public_key_path` | none | Auto inferred based on the `private_key_path` | Path to SSH public key that should be installed on the server. |
 | `disable_ssh_password` | none | `true` | When set to `true` and SSH keys are provided password auth for SSH is disabled. |
+| `api_retries` | none | `5` | How many times to retry API calls on timeouts or rate limits. |
 
 ## Usage
 
