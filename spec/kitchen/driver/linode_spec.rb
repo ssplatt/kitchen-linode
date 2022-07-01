@@ -150,6 +150,10 @@ describe Kitchen::Driver::Linode do
           linode_token: "somekey",
         }
       }
+      before(:each) do
+        ENV["JOB_NAME"] = nil
+        ENV["GITHUB_JOB"] = nil
+      end
 
       it "returns nil, but modifies the state" do
         post_stub = stub_request(:post, "https://api.linode.com/v4/linode/instances")
