@@ -1,0 +1,26 @@
+HTTP/1.1 429 Too Many Requests
+Server: nginx
+Date: Thu, 30 Jun 2022 15:50:47 GMT
+Content-Type: application/json
+Connection: keep-alive
+X-OAuth-Scopes: images:read_only linodes:read_write stackscripts:read_only
+X-Accepted-OAuth-Scopes: linodes:read_write
+X-Frame-Options: DENY
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Methods: HEAD, GET, OPTIONS, POST, PUT, DELETE
+Access-Control-Allow-Headers: Authorization, Origin, X-Requested-With, Content-Type, Accept, X-Filter
+X-Spec-Version: 4.129.0
+X-Customer-UUID: DEADBEEF-DEAD-BEEF-DEADBEEFDEADBEEF
+X-RateLimit-Limit: 10
+X-RateLimit-Remaining: 9
+X-RateLimit-Reset: 1656604288
+Retry-After: 5
+
+{
+  "errors": [
+    {
+      "field": "type",
+      "reason": "Too many requests"
+    }
+  ]
+}

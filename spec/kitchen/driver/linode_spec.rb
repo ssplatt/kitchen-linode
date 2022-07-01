@@ -18,9 +18,9 @@ describe Kitchen::Driver::Linode do
   let(:state) { {} }
   let(:rsa) { File.expand_path("~/.ssh/id_rsa") }
   let(:uuid_password) { "397a60bf-c7ac-4f5a-90c8-994fd835af8f" }
-  let(:instance_name) { "the_thing" }
+  let(:instance_name) { "kitchen-test" }
   let(:transport)     { Kitchen::Transport::Dummy.new }
-  let(:platform)      { Kitchen::Platform.new(name: "fake_platform") }
+  let(:platform)      { Kitchen::Platform.new(name: "linode/test") }
   let(:driver)        { Kitchen::Driver::Linode.new(config) }
 
   let(:instance) do
@@ -41,6 +41,11 @@ describe Kitchen::Driver::Linode do
     allow(File).to receive(:exist?).and_call_original
     allow(File).to receive(:exist?).with(rsa).and_return(true)
     allow(SecureRandom).to receive(:uuid).and_return(uuid_password)
+    # skip sleeping so we're not waiting
+    Retryable.configure do |config|
+      config.sleep_method = lambda { |n| nil }
+    end
+    allow(driver).to receive(:sleep).and_return(nil)
   end
 
   describe "#finalize_config" do
@@ -96,12 +101,15 @@ describe Kitchen::Driver::Linode do
         image: "linode/ubuntu20.04",
         region: "eu-central",
         type: "g6-standard-2",
-        kernel: "linode/grub2",
-        api_retries: 2,
+        stackscript_id: 12345,
+        stackscript_data: { test: "1234" },
+        swap_size: 256,
+        private_ip: true,
         authorized_users: ["timmy"],
         private_key_path: "/path/to/id_rsa",
         public_key_path: "/path/to/id_rsa.pub",
         disable_ssh_password: false,
+        api_retries: 2,
       }
 
       let(:config) { config }
@@ -115,13 +123,10 @@ describe Kitchen::Driver::Linode do
   end
 
   describe "#create" do
-    let(:server) do
-      double(id: "test123", wait_for: true, public_ip_address: %w{1.2.3.4})
-    end
+    let(:linode_label) { "kitchen-test_500" }
     let(:driver) do
       d = super()
-      allow(d).to receive(:create_server).and_return(server)
-      allow(d).to receive(:setup_server).and_return(true)
+      allow(d).to receive(:setup_server).and_return(nil)
       d
     end
 
@@ -134,30 +139,97 @@ describe Kitchen::Driver::Linode do
     end
 
     context "required options provided" do
-      let(:config) do
+      let(:driver) do
+        d = super()
+        allow(d).to receive(:setup_server).and_return(nil)
+        allow(d).to receive(:suffixes).and_return((500..505))
+        d
+      end
+      let(:config) {
         {
           linode_token: "somekey",
         }
-      end
-      let(:server) do
-        double(id: 123456, wait_for: true, ipv4: %w{1.2.3.4}, label: "test123")
-      end
-
-      let(:driver) do
-        d = described_class.new(config)
-        allow(d).to receive(:create_server).and_return(server)
-        allow(server).to receive(:id).and_return(123456)
-
-        allow(server).to receive(:wait_for)
-          .with(an_instance_of(Integer)).and_yield
-        allow(d).to receive(:bourne_shell?).and_return(false)
-        d
-      end
+      }
 
       it "returns nil, but modifies the state" do
+        post_stub = stub_request(:post, "https://api.linode.com/v4/linode/instances")
+          .to_return(lambda { |request| create_response(request) })
+        list_stub = stub_request(:get, "https://api.linode.com/v4/linode/instances")
+          .to_return(list_response)
+        get_stub = stub_request(:get, "https://api.linode.com/v4/linode/instances/73577357")
+          .to_return(view_response(linode_label, "us-east", "linode/test", "g6-nanode-1"))
         expect(driver.send(:create, state)).to eq(nil)
-        expect(state[:linode_id]).to eq(123456)
-        expect(state[:linode_label]).to eq("test123")
+        expect(post_stub).to have_been_made.times(1)
+        expect(list_stub).to have_been_made.times(1)
+        expect(get_stub).to have_been_made.times(1)
+        expect(state[:linode_id]).to eq(73577357)
+        expect(state[:linode_label]).to eq("kitchen-job-kitchen-test_500")
+      end
+
+      it "handles rate limits and connection timeouts like a champ" do
+        post_stub = stub_request(:post, "https://api.linode.com/v4/linode/instances")
+          .to_return(
+            create_timeout_response,
+            create_timeout_response,
+            create_ratelimit_response,
+            create_ratelimit_response,
+            lambda { |request| create_response(request) }
+          )
+        list_stub = stub_request(:get, "https://api.linode.com/v4/linode/instances")
+          .to_return(list_response)
+        get_stub = stub_request(:get, "https://api.linode.com/v4/linode/instances/73577357")
+          .to_return(view_response(linode_label, "us-east", "linode/test", "g6-nanode-1"))
+        driver.send(:create, state)
+        expect(post_stub).to have_been_made.times(5)
+        expect(list_stub).to have_been_made.times(1)
+        expect(get_stub).to have_been_made.times(1)
+        expect(state[:linode_id]).to eq(73577357)
+        expect(state[:linode_label]).to eq("kitchen-job-kitchen-test_500")
+      end
+
+      it "raises an error if we run out of retries" do
+        allow(driver).to receive(:sleep).and_return(nil) # skip sleeping so we're not waiting
+        post_stub = stub_request(:post, "https://api.linode.com/v4/linode/instances")
+          .to_return(
+            create_timeout_response,
+            create_timeout_response,
+            create_timeout_response,
+            create_timeout_response,
+            create_timeout_response
+          )
+        list_stub = stub_request(:get, "https://api.linode.com/v4/linode/instances")
+          .to_return(list_response)
+        expect { driver.send(:create, state) }.to raise_error(Kitchen::ActionFailed)
+        expect(list_stub).to have_been_made.times(1)
+        expect(post_stub).to have_been_made.times(5)
+      end
+
+      it "raises an error if the api says we provided garbage data" do
+        allow(driver).to receive(:sleep).and_return(nil) # skip sleeping so we're not waiting
+        post_stub = stub_request(:post, "https://api.linode.com/v4/linode/instances")
+          .to_return(create_bad_response)
+        list_stub = stub_request(:get, "https://api.linode.com/v4/linode/instances")
+          .to_return(list_response)
+        expect { driver.send(:create, state) }.to raise_error(Kitchen::UserError)
+        expect(list_stub).to have_been_made.times(1)
+        expect(post_stub).to have_been_made.times(1)
+      end
+
+      it "it picks a different suffix when other servers exist" do
+        post_stub = stub_request(:post, "https://api.linode.com/v4/linode/instances")
+          .to_return(lambda { |request| create_response(request) })
+        list_stub = stub_request(:get, "https://api.linode.com/v4/linode/instances")
+          .to_return(
+            body: '{"data": [{"label": "kitchen-job-kitchen-test_500"}, {"label": "kitchen-job-kitchen-test_501"}], "page": 1, "pages": 1, "results": 2}',
+            headers: { "Content-Type" => "application/json" }
+          )
+        get_stub = stub_request(:get, "https://api.linode.com/v4/linode/instances/73577357")
+          .to_return(view_response("kitchen-job-kitchen-test_502", "us-east", "linode/test", "g6-nanode-1"))
+        driver.send(:create, state)
+        expect(post_stub).to have_been_made.times(1)
+        expect(list_stub).to have_been_made.times(1)
+        expect(get_stub).to have_been_made.times(1)
+        expect(state[:linode_label]).to eq("kitchen-job-kitchen-test_502")
       end
 
       it "throws an Action error when trying to create_server" do
@@ -165,6 +237,96 @@ describe Kitchen::Driver::Linode do
         expect { driver.send(:create, state) }.to raise_error(Kitchen::ActionFailed)
       end
     end
+
+    context "when all the label suffixes are taken" do
+      let(:compute) {
+        double(
+          servers: double(
+            all: double(
+              find: true
+            )
+          )
+        )
+      }
+      before(:each) do
+        {
+          compute: compute,
+        }.each do |k, v|
+          allow_any_instance_of(described_class).to receive(k).and_return(v)
+        end
+      end
+
+      it "throws a UserError" do
+        expect { driver.send(:create, state) }.to raise_error(Kitchen::UserError)
+      end
+    end
+
+  end
+
+  describe "#destroy" do
+    let(:linode_id) { "73577357" }
+    let(:linode_label) { "kitchen-test_500" }
+    let(:hostname) { "203.0.113.243" }
+    let(:state) {
+      {
+        linode_id: linode_id,
+        linode_label: linode_label,
+        hostname: hostname,
+      }
+    }
+    let(:config) {
+      {
+        linode_token: "somekey",
+      }
+    }
+    let(:driver) { described_class.new(config) }
+
+    context "when a server hasn't been created" do
+      it "does not destroy anything" do
+        state = {}
+        expect(driver).not_to receive(:compute)
+        expect(state).not_to receive(:delete)
+        driver.destroy(state)
+        expect(a_request(:get, "https://api.linode.com/v4/linode/instances/73577357"))
+          .not_to have_been_made
+        expect(a_request(:delete, "https://api.linode.com/v4/linode/instances/73577357"))
+          .not_to have_been_made
+      end
+    end
+
+    context "when a server doesn't exist" do
+      it "doesn't get nervous about the 404" do
+        get_stub = stub_request(:get, "https://api.linode.com/v4/linode/instances/73577357")
+          .to_return(status: [404, "Not Found"])
+        expect(state).to receive(:delete).with(:linode_id)
+        expect(state).to receive(:delete).with(:linode_label)
+        expect(state).to receive(:delete).with(:hostname)
+        expect(state).to receive(:delete).with(:ssh_key)
+        expect(state).to receive(:delete).with(:password)
+        driver.destroy(state)
+        expect(get_stub).to have_been_made.times(1)
+        expect(a_request(:delete, "https://api.linode.com/v4/linode/instances/73577357"))
+          .not_to have_been_made
+      end
+    end
+
+    context "when a server exists" do
+      it "properly nukes it" do
+        get_stub = stub_request(:get, "https://api.linode.com/v4/linode/instances/73577357")
+          .to_return(view_response(linode_label, "us-test", "linode/test", "testnode"))
+        delete_stub = stub_request(:delete, "https://api.linode.com/v4/linode/instances/73577357")
+          .to_return(delete_response)
+        expect(state).to receive(:delete).with(:linode_id)
+        expect(state).to receive(:delete).with(:linode_label)
+        expect(state).to receive(:delete).with(:hostname)
+        expect(state).to receive(:delete).with(:ssh_key)
+        expect(state).to receive(:delete).with(:password)
+        driver.destroy(state)
+        expect(get_stub).to have_been_made.times(1)
+        expect(delete_stub).to have_been_made.times(1)
+      end
+    end
+
   end
 
 end

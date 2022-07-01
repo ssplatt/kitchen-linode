@@ -121,7 +121,9 @@ module Kitchen
         end
         state.delete(:linode_id)
         state.delete(:linode_label)
-        state.delete(:pub_ip)
+        state.delete(:hostname)
+        state.delete(:ssh_key)
+        state.delete(:password)
       end
 
       private
@@ -130,15 +132,21 @@ module Kitchen
         Fog::Compute.new(provider: :linode, linode_token: config[:linode_token])
       end
 
+      # generate possible label suffixes
+      def suffixes
+        (0..999).to_a.sample(1000)
+      end
+
       # generate a unique label
       def generate_unique_label
         # Try to generate a unique suffix and make sure nothing else on the account
         # has the same label.
         # The iterator is a randomized list from 0 to 999.
-        (0..999).to_a.sample(1000).each do |suffix|
+        servers = compute.servers.all
+        suffixes.each do |suffix|
           label = "#{config[:label]}_#{"%03d" % suffix}"
           Retryable.retryable do
-            return label if compute.servers.find { |server| server.label == label }.nil?
+            return label if servers.find { |server| server.label == label }.nil?
           end
         end
         # If we're here that means we couldn't make a unique label with the

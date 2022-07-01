@@ -23,9 +23,10 @@ Gem::Specification.new do |spec|
   spec.add_dependency "test-kitchen", ">= 1.4", "< 4"
 
   spec.add_development_dependency "bundler"
-  spec.add_development_dependency "chefstyle"
-  spec.add_development_dependency "countloc"
+  spec.add_development_dependency "chefstyle", "= 2.2.2"
+  spec.add_development_dependency "countloc", "~> 0.4"
   spec.add_development_dependency "rake"
-  spec.add_development_dependency "rspec"
-  spec.add_development_dependency "simplecov"
+  spec.add_development_dependency "rspec", "~> 3.8"
+  spec.add_development_dependency "simplecov", "~> 0.9"
+  spec.add_development_dependency "webmock", "~> 3.5"
 end
