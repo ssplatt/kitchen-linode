@@ -26,7 +26,8 @@ The gem file is hosted at [RubyGems](https://rubygems.org/gems/kitchen-linode). 
 gem install kitchen-linode
 ```
 
-Or, install with bundler if you have a Gemfile
+Or, install with bundler if you have a Gemfile.
+
 Please read the [Driver usage][driver_usage] page for more details.
 
 ## Configuration
@@ -89,33 +90,23 @@ then you're ready to run `kitchen test` or `kitchen converge`
 kitchen test
 ```
 
-If you want to create a second yaml config; one for using Vagrant locally but another to use the Linode driver when run on your CI server, create a config with a name like `.kitchen-ci.yml`:
+If you want to use Vagrant for local tests and Linode for CI tests then you can add the following to your `.kitchen.yml` to automatically switch the driver if the `LINODE_TOKEN` environment variable is set:
 
 ```yaml
----
 driver:
-  name: linode
-
-provisioner:
-  name: salt_solo
-  formula: vim
-  state_top:
-    base:
-      "*":
-        - vim
+  name: <%= ENV['LINODE_TOKEN'] ? 'linode' : 'vagrant' %>
 
 platforms:
-  - name: linode/debian10
+  - name: debian-10
+    driver:
+      box: bento/debian-10
+      image: linode/debian10
 
 suites:
   - name: default
 ```
 
-Then you can run the second config by changing the KITCHEN_YAML environment variable:
-
-```sh
-KITCHEN_YAML="./.kitchen-ci.yml" kitchen test
-```
+Note that both the `image` (linode) and the `box` (vagrant) options are supplied in the platform driver configuration.
 
 If you want to change any of the default settings, you can do so in the 'platforms' area:
 
@@ -126,7 +117,6 @@ platforms:
     driver:
       type: g6-standard-2
       region: eu-central
-      kernel: linode/latest-64bit
       image: linode/ubuntu20.04
 # ...<snip>...
 ```
