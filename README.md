@@ -1,4 +1,4 @@
-# <a name="title"></a> Kitchen::Linode
+# Kitchen::Linode
 [![Gem](https://img.shields.io/gem/v/kitchen-linode.svg)](https://rubygems.org/gems/kitchen-linode)
 [![Gem](https://img.shields.io/gem/dt/kitchen-linode.svg)](https://rubygems.org/gems/kitchen-linode)
 [![Gem](https://img.shields.io/gem/dtv/kitchen-linode.svg)](https://rubygems.org/gems/kitchen-linode)
@@ -10,7 +10,7 @@ A Test Kitchen Driver for [Linode](http://www.linode.com).
 
 [![asciicast](https://asciinema.org/a/44348.png)](https://asciinema.org/a/44348)
 
-## <a name="requirements"></a> Requirements
+## Requirements
 
 Requires [Test Kitchen](https://kitchen.ci/) and a [Linode](http://www.linode.com) account.
 
@@ -18,7 +18,7 @@ Requires [Test Kitchen](https://kitchen.ci/) and a [Linode](http://www.linode.co
 gem install test-kitchen
 ```
 
-## <a name="installation"></a> Installation and Setup
+## Installation and Setup
 
 The gem file is hosted at [RubyGems](https://rubygems.org/gems/kitchen-linode). To install the gem file, run:
 
@@ -26,36 +26,40 @@ The gem file is hosted at [RubyGems](https://rubygems.org/gems/kitchen-linode). 
 gem install kitchen-linode
 ```
 
-Or, install with bundler if you have a Gemfile
+Or, install with bundler if you have a Gemfile.
+
 Please read the [Driver usage][driver_usage] page for more details.
 
-## <a name="config"></a> Configuration
+## Configuration
 
 For many of these, you can specify an ID number, a full name, or a partial name that will try to match something in the list but may not match exactly what you want.
 
-```
-LINODE_API_KEY      Linode API Key environment variable, default: nil
-:username           ssh user name, default: "root"
-:password           password for user, default: randomly generated hash
-:image              Linux distribution, default: "Debian 8"
-:data_center        data center, default: "Atlanta"
-:flavor             linode type/amount of RAM, default: "Linode 1024"
-:payment_terms      if you happen to have legacy, default: 1
-:kernel             Linux kernel, default: "Latest 64 bit"
-:private_key_path   Location of your private key file, default: "~/.ssh/id_rsa"
-:public_key_path    Location of your public key file, default: "~/.ssh/id_rsa.pub"
-:ssh_timeout        ssh timeout, default: 600 (seconds)
-:sudo               use sudo, default: True
-:port               ssh port, default: 22
-:server_name        set the hostname and linode name
-```
+| Option | Env Var | Default | Description |
+|-|-|-|-|
+| `linode_token` | `LINODE_TOKEN` | none | Linode API token. Required. |
+| `password` | `LINODE_PASSWORD` | Random UUID | Password for root. |
+| `label` | none | Auto generated | Label for the server. |
+| `tags` | none | `["kitchen"]` | List of tags to set on the server. |
+| `hostname` | none | Label if provided, else kitchen instance name | The hostname of the server. |
+| `image` | none | Kitchen platform name | Linode image. |
+| `region` | `LINODE_REGION` | `us-east` | Linode region. |
+| `type` | none | `g6-nanode-1` | Linode type. |
+| `stackscript_id` | none | none | StackScript ID to provision the server with. |
+| `stackscript_data` | none | none | StackScript data for user defined fields. |
+| `swap_size` | none | none | Swap size in MB. |
+| `private_ip` | none | `false` | Set to true to add a private IP to the server. |
+| `authorized_users` | `LINODE_AUTH_USERS` | `[]` | List of authorized Linode users for seeding SSH keys. Environment variable should be a comma separated list of usernames. |
+| `private_key_path` | `LINODE_PRIVATE_KEY` | `~/.ssh/id_rsa`, `~/.ssh/id_dsa`, `~/.ssh/identity`, or `~/.ssh/id_ecdsa`, whichever first exists. | Path to SSH private key that should be used to connect to the server. |
+| `public_key_path` | none | Auto inferred based on the `private_key_path` | Path to SSH public key that should be installed on the server. |
+| `disable_ssh_password` | none | `true` | When set to `true` and SSH keys are provided password auth for SSH is disabled. |
+| `api_retries` | none | `5` | How many times to retry API calls on timeouts or rate limits. |
 
-## <a name="usage"></a> Usage
+## Usage
 
-First, set your Linode API key in an environment variable:
+First, set your Linode API token in an environment variable:
 
 ```sh
-export LINODE_API_KEY='myrandomkey123123213h123bh12'
+export LINODE_TOKEN='myrandomtoken123123213h123bh12'
 ```
 
 Then, create a .kitchen.yml file:
@@ -74,7 +78,7 @@ provisioner:
         - vim
 
 platforms:
-  - name: debian_jessie
+  - name: linode/debian10
 
 suites:
   - name: default
@@ -86,49 +90,38 @@ then you're ready to run `kitchen test` or `kitchen converge`
 kitchen test
 ```
 
-If you want to create a second yaml config; one for using Vagrant locally but another to use the Linode driver when run on your CI server, create a config with a name like `.kitchen-ci.yml`:
+If you want to use Vagrant for local tests and Linode for CI tests then you can add the following to your `.kitchen.yml` to automatically switch the driver if the `LINODE_TOKEN` environment variable is set:
 
 ```yaml
----
 driver:
-  name: linode
-
-provisioner:
-  name: salt_solo
-  formula: vim
-  state_top:
-    base:
-      "*":
-        - vim
+  name: <%= ENV['LINODE_TOKEN'] ? 'linode' : 'vagrant' %>
 
 platforms:
-  - name: debian_jessie
+  - name: debian-10
+    driver:
+      box: bento/debian-10
+      image: linode/debian10
 
 suites:
   - name: default
 ```
 
-Then you can run the second config by changing the KITCHEN_YAML environment variable:
-
-```sh
-KITCHEN_YAML="./.kitchen-ci.yml" kitchen test
-```
+Note that both the `image` (linode) and the `box` (vagrant) options are supplied in the platform driver configuration.
 
 If you want to change any of the default settings, you can do so in the 'platforms' area:
 
 ```yaml
 # ...<snip>...
 platforms:
-  - name: debian_jessie
+  - name: ubuntu_lts
     driver:
-      flavor: 2048
-      data_center: Dallas
-      kernel: 4.0.2-x86_64-linode56
-      image: Debian 7
+      type: g6-standard-2
+      region: eu-central
+      image: linode/ubuntu20.04
 # ...<snip>...
 ```
 
-## <a name="development"></a> Development
+## Development
 
 * Source hosted at [GitHub][repo]
 * Report issues/questions/feature requests on [GitHub Issues][issues]
@@ -143,11 +136,11 @@ example:
 4. Push to the branch (`git push origin my-new-feature`)
 5. Create new Pull Request
 
-## <a name="authors"></a> Authors
+## Authors
 
 Created and maintained by [Brett Taylor][author] (<btaylor@linode.com>)
 
-## <a name="license"></a> License
+## License
 
 Apache 2.0 (see [LICENSE][license])
 

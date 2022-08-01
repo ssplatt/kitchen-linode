@@ -1,0 +1,68 @@
+<% # Make sure the local copy of the driver is loaded %>
+<% lib = File.expand_path('../lib', __FILE__) %>
+<% $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib) %>
+---
+driver:
+  name: linode
+
+provisioner:
+  name: dummy
+
+platforms:
+  - name: linode/almalinux8
+  - name: linode/almalinux9
+  - name: linode/alpine3.16
+  - name: linode/arch
+  - name: linode/centos7
+  - name: linode/centos-stream8
+  - name: linode/centos-stream9
+  - name: linode/debian10
+  - name: linode/debian11
+  - name: linode/fedora36
+  - name: linode/gentoo
+  - name: linode/kali
+  - name: linode/opensuse15.4
+  - name: linode/rocky8
+  - name: linode/slackware15.0
+  - name: linode/ubuntu20.04
+  - name: linode/ubuntu22.04
+
+suites:
+  - name: default
+    excludes:
+      - linode/almalinux9
+      - linode/alpine3.16
+      - linode/centos-stream9
+      - linode/arch
+      - linode/fedora36
+      - linode/gentoo
+      - linode/kali
+      - linode/slackware15.0
+      - linode/ubuntu22.04
+  # All of these ship with OpenSSH 8.8+, switch to ecdsa
+  # keys until test-kitchen bumps net-ssh to 7.0+.
+  # See: https://github.com/net-ssh/net-ssh/issues/836
+  - name: ecdsa
+    driver:
+      private_key_path: ~/.ssh/id_ecdsa
+    includes:
+      - linode/almalinux9
+      - linode/alpine3.16
+      - linode/centos-stream9
+      - linode/arch
+      - linode/fedora36
+      - linode/gentoo
+      - linode/kali
+      - linode/slackware15.0
+      - linode/ubuntu22.04
+
+verifier:
+  name: shell
+  # simple check to test:
+  #   - ssh connectivity
+  #   - hostname was set correctly
+  #   - ssh password auth was disabled
+  command: >-
+      set -x &&
+      test "$(ssh -i ${KITCHEN_SSH_KEY} ${KITCHEN_USERNAME}@${KITCHEN_HOSTNAME} -p ${KITCHEN_PORT:-22} -o 'StrictHostKeyChecking=no' -o 'UserKnownHostsFile=/dev/null' -o 'LogLevel=ERROR' 'hostname')" = "${KITCHEN_INSTANCE}" &&
+      ssh -i ${KITCHEN_SSH_KEY} ${KITCHEN_USERNAME}@${KITCHEN_HOSTNAME} -p ${KITCHEN_PORT:-22} -o 'StrictHostKeyChecking=no' -o 'UserKnownHostsFile=/dev/null' -o 'LogLevel=ERROR' 'grep -qe "^PasswordAuthentication no$" /etc/ssh/sshd_config'

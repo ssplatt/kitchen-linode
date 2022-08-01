@@ -1,0 +1,67 @@
+HTTP/1.1 200 OK
+Server: nginx
+Date: Thu, 30 Jun 2022 15:22:08 GMT
+Content-Type: application/json
+Connection: keep-alive
+X-OAuth-Scopes: images:read_only linodes:read_write stackscripts:read_only
+X-Accepted-OAuth-Scopes: linodes:read_write
+X-Frame-Options: DENY, DENY
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Methods: HEAD, GET, OPTIONS, POST, PUT, DELETE
+Access-Control-Allow-Headers: Authorization, Origin, X-Requested-With, Content-Type, Accept, X-Filter
+X-Spec-Version: 4.129.0
+X-Customer-UUID: DEADBEEF-DEAD-BEEF-DEADBEEFDEADBEEF
+X-RateLimit-Limit: 10
+X-RateLimit-Remaining: 8
+X-RateLimit-Reset: 1656602552
+Retry-After: 13
+Access-Control-Allow-Credentials: true
+Access-Control-Expose-Headers: X-OAuth-Scopes, X-Accepted-OAuth-Scopes, X-Status
+Cache-Control: private, max-age=60, s-maxage=60
+Content-Security-Policy: default-src 'none'
+Vary: Authorization, X-Filter
+X-Content-Type-Options: nosniff
+X-XSS-Protection: 1; mode=block
+Strict-Transport-Security: max-age=31536000
+
+{
+  "alerts": {
+    "cpu": 90,
+    "io": 10000,
+    "network_in": 10,
+    "network_out": 10,
+    "transfer_quota": 80
+  },
+  "backups": {
+    "enabled": false,
+    "last_successful": null,
+    "schedule": {
+      "day": null,
+      "window": null
+    }
+  },
+  "created": "2022-06-30T15:22:14",
+  "group": "",
+  "hypervisor": "kvm",
+  "id": 73577357,
+  "image": "<%= request_body["image"] %>",
+  "ipv4": [
+    "203.0.113.243"
+  ],
+  "ipv6": "2001:db8::f03c:93ff:fe92:5e2b/128",
+  "label": "<%= request_body["label"] %>",
+  "region": "<%= request_body["region"] %>",
+  "specs": {
+    "disk": 25600,
+    "memory": 1024,
+    "transfer": 1000,
+    "vcpus": 1
+  },
+  "status": "provisioning",
+  "tags": [
+    "kitchen"
+  ],
+  "type": "<%= request_body["type"] %>",
+  "updated": "2022-06-30T15:22:14",
+  "watchdog_enabled": true
+}

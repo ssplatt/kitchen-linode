@@ -1,4 +1,3 @@
-# -*- encoding: utf-8 -*-
 #
 # Author:: Brett Taylor (<btaylor@linode.com>)
 #
@@ -20,6 +19,6 @@ module Kitchen
 
   module Driver
     # Version string for Linode Kitchen driver
-    LINODE_VERSION = "0.14.0"
+    LINODE_VERSION = "0.14.0".freeze
   end
 end
