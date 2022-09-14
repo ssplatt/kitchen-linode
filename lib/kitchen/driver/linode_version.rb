@@ -19,6 +19,6 @@ module Kitchen
 
   module Driver
     # Version string for Linode Kitchen driver
-    LINODE_VERSION = "0.14.0".freeze
+    LINODE_VERSION = "0.15.0".freeze
   end
 end
